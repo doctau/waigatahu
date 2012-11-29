@@ -2,16 +2,24 @@ package com.redhat.gss.mylyn.rhcp.ui;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.ui.wizards.AbstractRepositorySettingsPage;
 import org.eclipse.swt.widgets.Composite;
 
 import com.redhat.gss.mylyn.rhcp.core.RhcpCorePlugin;
+import com.redhat.gss.mylyn.rhcp.core.client.RhcpClient;
+import com.redhat.gss.mylyn.rhcp.core.client.RhcpClientFactory;
 
 public class RhcpTaskRepositoryPage extends AbstractRepositorySettingsPage {
+	private final RhcpClientFactory clientFactory;
+	
 	public RhcpTaskRepositoryPage(String title, String description,
-			TaskRepository taskRepository) {
+			TaskRepository taskRepository, RhcpClientFactory clientFactory) {
 		super(title, description, taskRepository);
+		this.clientFactory = clientFactory;
 	}
 
 	public String getConnectorKind() {
@@ -40,7 +48,22 @@ public class RhcpTaskRepositoryPage extends AbstractRepositorySettingsPage {
 		}
 
 		public void run(IProgressMonitor monitor) throws CoreException {
-			//TODO: validate settings
+			monitor.beginTask("Verifying credentials", IProgressMonitor.UNKNOWN);
+			try {
+				validate(monitor);
+			} finally {
+				monitor.done();
+			}
+		}
+
+		private void validate(IProgressMonitor monitor) throws CoreException {
+			try {
+				RhcpClient client = clientFactory.getClient(repository);
+				client.validateConnection(monitor);
+				setStatus(RepositoryStatus.OK_STATUS);
+			} catch (Exception e) {
+				setStatus(RepositoryStatus.createLoginError(repository.getUrl(), RhcpCorePlugin.CONNECTOR_KIND));
+			}
 		}
 	}
 }

@@ -55,7 +55,7 @@ public class RhcpCaseDataHandler extends AbstractTaskDataHandler {
 
 	public TaskData downloadTaskData(TaskRepository repository, long caseId, IProgressMonitor monitor)
 			throws CoreException {
-		RhcpClient client = connector.getTracClient(repository);
+		RhcpClient client = connector.getClientFactory().getClient(repository);
 		RhcpSupportCase supportCase = client.getCase(caseId, monitor);
 
 		return createTaskDataFromCase(client, repository, supportCase, monitor);

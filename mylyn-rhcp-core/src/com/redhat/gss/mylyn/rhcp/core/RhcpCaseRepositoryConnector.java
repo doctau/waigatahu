@@ -11,7 +11,9 @@ import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskDataCollector;
 import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
 
+import com.redhat.gss.mylyn.rhcp.core.client.RhcpClientFactoryImpl;
 import com.redhat.gss.mylyn.rhcp.core.client.RhcpClient;
+import com.redhat.gss.mylyn.rhcp.core.client.RhcpClientFactory;
 
 public class RhcpCaseRepositoryConnector extends AbstractRepositoryConnector {
 	private static final String LABEL = "Red Hat Customer Portal";
@@ -49,9 +51,10 @@ public class RhcpCaseRepositoryConnector extends AbstractRepositoryConnector {
 		throw new IllegalArgumentException();
 	}
 
-	public RhcpClient getTracClient(TaskRepository repository) {
-		throw new IllegalArgumentException();
+	public RhcpClientFactory getClientFactory() {
+		return new RhcpClientFactoryImpl();
 	}
+
 	
 
 	
