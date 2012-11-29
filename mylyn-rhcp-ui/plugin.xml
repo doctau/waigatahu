@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.mylyn.tasks.ui.repositories">
+      <connectorCore
+            class="com.redhat.gss.mylyn.rhcp.core.RhcpCaseRepositoryConnector">
+      </connectorCore>
+      <connectorUi
+            class="com.redhat.gss.mylyn.rhcp.ui.RhcpCaseConnectorUi">
+      </connectorUi>
+   </extension>
+
+   <extension
+         point="org.eclipse.mylyn.tasks.core.templates">
+      <repository
+            addAutomatically="false"
+            anonymous="true"
+            label="Edgewall"
+            repositoryKind="trac"
+            urlRepository="http://trac.edgewall.org"
+            version="TRAC_0_9"/>
+   </extension>
+   <extension
+         point="org.eclipse.mylyn.tasks.ui.editors">
+      <pageFactory
+            class="com.redhat.gss.mylyn.rhcp.ui.editor.RhcpCaseEditorPageFactory"
+            id="org.eclipse.mylyn.trac.ui.pageFactory">
+      </pageFactory>
+   </extension>
+</plugin>
