@@ -11,9 +11,9 @@ import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskDataCollector;
 import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
 
-import com.redhat.gss.mylyn.rhcp.core.client.RhcpClientFactoryImpl;
 import com.redhat.gss.mylyn.rhcp.core.client.RhcpClient;
 import com.redhat.gss.mylyn.rhcp.core.client.RhcpClientFactory;
+import com.redhat.gss.mylyn.rhcp.core.client.RhcpClientFactoryImpl;
 
 public class RhcpCaseRepositoryConnector extends AbstractRepositoryConnector {
 	private static final String LABEL = "Red Hat Customer Portal";
@@ -38,59 +38,53 @@ public class RhcpCaseRepositoryConnector extends AbstractRepositoryConnector {
 	}
 	
 	public boolean canQuery() {
-		//FIXME: add support later
-		return false;
+		return true;
+	}
+
+	public IStatus performQuery(TaskRepository repository,
+			IRepositoryQuery query, TaskDataCollector collector,
+			ISynchronizationSession session, IProgressMonitor monitor) {
+		return taskDataHandler.performQuery(repository, query, collector, session, monitor);
 	}
 	
+	public boolean canCreateNewTask(TaskRepository repository) {
+		RhcpClient client = getClientFactory().getClient(repository);
+		return client.canCreateCases();
+	}
+
+	public boolean hasTaskChanged(TaskRepository taskRepository, ITask task, TaskData taskData) {
+		return getTaskMapping(taskData).hasChanges(task);
+	}
+
+	public void updateTaskFromTaskData(TaskRepository repository, ITask task, TaskData taskData) {
+		getTaskMapping(taskData).applyTo(task);
+	}
 
 
-	/*
-	 * Convert a taskId into a case number
-	 */
-	public long getCaseId(String taskId) {
-		throw new IllegalArgumentException();
+	public RhcpTaskMapper getTaskMapping(TaskData taskData) {
+		TaskRepository repository = taskData.getAttributeMapper().getTaskRepository();
+		RhcpClient client = getClientFactory().getClient(repository);
+		return new RhcpTaskMapper(taskData, client);
 	}
 
 	public RhcpClientFactory getClientFactory() {
 		return new RhcpClientFactoryImpl();
 	}
 
-	
-
-	
-	public boolean canCreateNewTask(TaskRepository repository) {
-		return false;
+	public String getRepositoryUrlFromTaskUrl(String taskUrl) {
+		return getClientFactory().getRepositoryUrlFromCaseUrl(taskUrl);
 	}
 
-	public String getRepositoryUrlFromTaskUrl(String taskFullUrl) {
-		throw new IllegalArgumentException();
-	}
-
-	public String getTaskIdFromTaskUrl(String taskFullUrl) {
-		throw new IllegalArgumentException();
+	public String getTaskIdFromTaskUrl(String taskUrl) {
+		return Long.toString(getClientFactory().getCaseNumberFromCaseUrl(taskUrl));
 	}
 
 	public String getTaskUrl(String repositoryUrl, String taskId) {
-		throw new IllegalArgumentException();
-	}
-
-	public boolean hasTaskChanged(TaskRepository taskRepository, ITask task, TaskData taskData) {
-		throw new IllegalArgumentException();
-	}
-
-	public IStatus performQuery(TaskRepository repository,
-			IRepositoryQuery query, TaskDataCollector collector,
-			ISynchronizationSession session, IProgressMonitor monitor) {
-		throw new IllegalArgumentException();
+		return getClientFactory().getCaseUrl(repositoryUrl, Long.parseLong(taskId));
 	}
 
 	public void updateRepositoryConfiguration(TaskRepository taskRepository,
 			IProgressMonitor monitor) throws CoreException {
-		throw new IllegalArgumentException();
-		
-	}
-
-	public void updateTaskFromTaskData(TaskRepository taskRepository, ITask task, TaskData taskData) {
 		throw new IllegalArgumentException();
 	}
 }

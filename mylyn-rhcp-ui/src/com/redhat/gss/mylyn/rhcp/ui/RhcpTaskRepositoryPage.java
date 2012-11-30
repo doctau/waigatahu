@@ -2,8 +2,6 @@ package com.redhat.gss.mylyn.rhcp.ui;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.ui.wizards.AbstractRepositorySettingsPage;
@@ -27,13 +25,12 @@ public class RhcpTaskRepositoryPage extends AbstractRepositorySettingsPage {
 	}
 
 	protected void createAdditionalControls(Composite parent) {
-		// TODO Auto-generated method stub
-		
+		// TODO: add any custom controls
 	}
 
 	public void applyTo(TaskRepository repository) {
 		super.applyTo(repository);
-		// TODO: store settings
+		// TODO: store any custom settings
 	}
 
 	protected Validator getValidator(TaskRepository repository) {
