@@ -36,7 +36,7 @@ public class RhcpTaskRepositoryPage extends AbstractRepositorySettingsPage {
 	protected Validator getValidator(TaskRepository repository) {
 		return new RhcpSettingsValidator(repository);
 	}
-	
+
 	class RhcpSettingsValidator extends Validator {
 		private final TaskRepository repository;
 

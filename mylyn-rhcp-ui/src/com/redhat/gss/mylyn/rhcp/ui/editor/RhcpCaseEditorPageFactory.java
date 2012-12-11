@@ -12,8 +12,11 @@ public class RhcpCaseEditorPageFactory extends AbstractTaskEditorPageFactory {
 	private static final String PAGE_TEXT = "PAGE TEXT";
 	
 	public boolean canCreatePageFor(TaskEditorInput input) {
-		//TODO: check
-		return true;
+		if (input.getTask().getConnectorKind().equals(RhcpCorePlugin.CONNECTOR_KIND)) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	public Image getPageImage() {
@@ -23,6 +26,10 @@ public class RhcpCaseEditorPageFactory extends AbstractTaskEditorPageFactory {
 
 	public String getPageText() {
 		return PAGE_TEXT;
+	}
+
+	public int getPriority() {
+		return PRIORITY_TASK;
 	}
 
 	public IFormPage createPage(TaskEditor parentEditor) {

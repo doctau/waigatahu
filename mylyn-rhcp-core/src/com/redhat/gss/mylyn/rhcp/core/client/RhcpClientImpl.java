@@ -24,9 +24,9 @@ import org.eclipse.mylyn.commons.net.WebUtil;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
 
-import com.redhat.gss.mylyn.rhcp.core.data.RhcpSupportCase;
-import com.redhat.gss.mylyn.rhcp.core.data.RhcpSupportCases;
 import com.redhat.gss.mylyn.rhcp.util.Utils;
+import com.redhat.gss.strata.model.Case;
+import com.redhat.gss.strata.model.Cases;
 
 public class RhcpClientImpl implements RhcpClient {
 	private static final String USER_AGENT = "Mylyn RHCP connector client 0.0.1";
@@ -45,7 +45,7 @@ public class RhcpClientImpl implements RhcpClient {
 		this.factory = factory;
 
 		try {
-			this.jaxbContext = JAXBContext.newInstance(RhcpSupportCases.class, RhcpSupportCase.class);
+			this.jaxbContext = JAXBContext.newInstance(Cases.class, Case.class);
 		} catch (JAXBException e) {
 			throw new RuntimeException(e);
 		}
@@ -133,7 +133,7 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public Collection<RhcpSupportCase> getAllOpenCases(RhcpClient client,
+	public Collection<Case> getAllOpenCases(RhcpClient client,
 			IProgressMonitor monitor) {
 		GetMethod method = runGetRequest(ALL_OPEN_CASES_PATH, monitor);
 		try {
@@ -142,8 +142,8 @@ public class RhcpClientImpl implements RhcpClient {
 				try {
 					InputStream is = WebUtil.getResponseBodyAsStream(method, monitor);
 				    Unmarshaller um = jaxbContext.createUnmarshaller();
-				    RhcpSupportCases cases = (RhcpSupportCases) um.unmarshal(is);
-					return cases.getCases();
+				    Cases cases = (Cases) um.unmarshal(is);
+					return cases.getCase();
 				} catch (IOException e) {
 					throw new RuntimeException(e);
 				} catch (JAXBException e) {
@@ -157,7 +157,7 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public RhcpSupportCase getCase(long caseNumber, IProgressMonitor monitor) {
+	public Case getCase(long caseNumber, IProgressMonitor monitor) {
 		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
 		GetMethod method = runGetRequest(CASE_PREFIX + caseId, monitor);
 		try {
@@ -167,7 +167,7 @@ public class RhcpClientImpl implements RhcpClient {
 					InputStream is = WebUtil.getResponseBodyAsStream(method, monitor);
 	
 				    Unmarshaller um = jaxbContext.createUnmarshaller();
-				    return (RhcpSupportCase) um.unmarshal(is);
+				    return (Case) um.unmarshal(is);
 				} catch (IOException e) {
 					throw new RuntimeException(e);
 				} catch (JAXBException e) {

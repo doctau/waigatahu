@@ -1,11 +1,13 @@
 package com.redhat.gss.mylyn.rhcp.core;
 
 import org.eclipse.mylyn.tasks.core.ITask;
+import org.eclipse.mylyn.tasks.core.ITask.PriorityLevel;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskMapper;
 
 import com.redhat.gss.mylyn.rhcp.core.client.RhcpClient;
 
+// Maps TaskData to ITasks
 public class RhcpTaskMapper extends TaskMapper {
 	private final RhcpClient client;
 

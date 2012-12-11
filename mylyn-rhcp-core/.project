@@ -3,6 +3,7 @@
 	<name>mylyn-rhcp-core</name>
 	<comment></comment>
 	<projects>
+		<project>support-services-api</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
