@@ -6,7 +6,8 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: com.redhat.gss.mylyn.rhcp.ui.Activator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
- com.redhat.gss.mylyn.core;bundle-version="1.0.0"
+ com.redhat.gss.mylyn.core;bundle-version="1.0.0",
+ org.eclipse.mylyn.tasks.core
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Import-Package: org.eclipse.mylyn.commons.core,

@@ -1,9 +1,11 @@
 package com.redhat.gss.mylyn.rhcp.ui;
 
 import org.eclipse.jface.wizard.IWizard;
+import org.eclipse.jface.wizard.IWizardPage;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITaskMapping;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
+import org.eclipse.mylyn.tasks.core.data.TaskAttachmentModel;
 import org.eclipse.mylyn.tasks.ui.AbstractRepositoryConnectorUi;
 import org.eclipse.mylyn.tasks.ui.wizards.ITaskRepositoryPage;
 import org.eclipse.mylyn.tasks.ui.wizards.RepositoryQueryWizard;
@@ -11,6 +13,7 @@ import org.eclipse.mylyn.tasks.ui.wizards.RepositoryQueryWizard;
 import com.redhat.gss.mylyn.rhcp.core.RhcpCaseRepositoryConnector;
 import com.redhat.gss.mylyn.rhcp.core.RhcpCorePlugin;
 import com.redhat.gss.mylyn.rhcp.core.client.RhcpClientFactory;
+import com.redhat.gss.mylyn.rhcp.ui.attachment.RhcpTaskAttachmentPage;
 import com.redhat.gss.mylyn.rhcp.ui.query.RhcpCaseQueryPage;
 
 public class RhcpCaseConnectorUi extends AbstractRepositoryConnectorUi {
@@ -39,6 +42,10 @@ public class RhcpCaseConnectorUi extends AbstractRepositoryConnectorUi {
 		RepositoryQueryWizard wizard = new RepositoryQueryWizard(repository);
 		wizard.addPage(new RhcpCaseQueryPage(QUERY_PAGE_DESCRIPTION, repository, query));
 		return wizard;
+	}
+
+	public IWizardPage getTaskAttachmentPage(TaskAttachmentModel model) {
+		return new RhcpTaskAttachmentPage(model);
 	}
 
 	public IWizard getNewTaskWizard(TaskRepository repository, ITaskMapping selection) {

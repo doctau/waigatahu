@@ -7,6 +7,8 @@ import org.eclipse.mylyn.tasks.core.AbstractRepositoryConnector;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITask;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
+import org.eclipse.mylyn.tasks.core.data.AbstractTaskAttachmentHandler;
+import org.eclipse.mylyn.tasks.core.data.AbstractTaskDataHandler;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskDataCollector;
 import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
@@ -19,6 +21,7 @@ public class RhcpCaseRepositoryConnector extends AbstractRepositoryConnector {
 	private static final String LABEL = "Red Hat Customer Portal";
 	
 	private final RhcpCaseDataHandler taskDataHandler = new RhcpCaseDataHandler(this);
+	private final AbstractTaskAttachmentHandler taskAttachmentHandler = new RhcpCaseAttachmentHandler(this);
 
 	public String getConnectorKind() {
 		return RhcpCorePlugin.CONNECTOR_KIND;
@@ -86,5 +89,15 @@ public class RhcpCaseRepositoryConnector extends AbstractRepositoryConnector {
 	public void updateRepositoryConfiguration(TaskRepository taskRepository,
 			IProgressMonitor monitor) throws CoreException {
 		throw new IllegalArgumentException();
+	}
+	
+	
+
+	public AbstractTaskDataHandler getTaskDataHandler() {
+		return taskDataHandler;
+	}
+
+	public AbstractTaskAttachmentHandler getTaskAttachmentHandler() {
+		return taskAttachmentHandler;
 	}
 }
