@@ -12,16 +12,6 @@
    </extension>
 
    <extension
-         point="org.eclipse.mylyn.tasks.core.templates">
-      <repository
-            addAutomatically="false"
-            anonymous="true"
-            label="Edgewall"
-            repositoryKind="trac"
-            urlRepository="http://trac.edgewall.org"
-            version="TRAC_0_9"/>
-   </extension>
-   <extension
          point="org.eclipse.mylyn.tasks.ui.editors">
       <pageFactory
             class="com.redhat.gss.mylyn.rhcp.ui.editor.RhcpCaseEditorPageFactory"

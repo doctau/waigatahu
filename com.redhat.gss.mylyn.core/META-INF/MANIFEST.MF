@@ -1,8 +1,8 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Mylyn-rhcp-core
+Bundle-Name: com.redhat.gss.mylyn.core
 Bundle-SymbolicName: com.redhat.gss.mylyn.core;singleton:=true
-Bundle-Version: 1.0.0.qualifier
+Bundle-Version: 0.0.1.qualifier
 Bundle-Activator: com.redhat.gss.mylyn.rhcp.core.Activator
 Require-Bundle: org.eclipse.core.runtime,
  org.apache.commons.httpclient

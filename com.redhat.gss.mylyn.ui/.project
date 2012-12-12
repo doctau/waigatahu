@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>mylyn-rhcp-core</name>
+	<name>com.redhat.gss.mylyn.ui</name>
 	<comment></comment>
 	<projects>
-		<project>support-services-api</project>
+		<project>com.redhat.gss.mylyn.core</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
