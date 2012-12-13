@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.mylyn.tasks.ui.repositories">
+      <connectorCore
+            class="com.redhat.gss.waigatahu.cases.core.CaseRepositoryConnector">
+      </connectorCore>
+      <connectorUi
+            class="com.redhat.gss.waigatahu.cases.ui.WaigatahuCaseConnectorUi">
+      </connectorUi>
+   </extension>
+
+   <extension
+         point="org.eclipse.mylyn.tasks.ui.editors">
+      <pageFactory
+            class="com.redhat.gss.waigatahu.cases.ui.editor.CaseEditorPageFactory"
+            id="org.eclipse.mylyn.trac.ui.pageFactory">
+      </pageFactory>
+   </extension>
+</plugin>
