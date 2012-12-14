@@ -19,15 +19,16 @@ public interface RhcpClient {
 
 	//cases
 	Case getCase(long caseId, IProgressMonitor monitor);
-	List<Attachment> getCaseAttachments(String taskId, IProgressMonitor monitor);
+	List<Attachment> getCaseAttachments(long caseId, IProgressMonitor monitor);
+	void updateCaseMetadata(long caseId, Case supportCase, IProgressMonitor monitor);
 	
 	//queries
 	Collection<Case> getAllOpenCases(RhcpClient client, IProgressMonitor monitor);
 	
 	//attachments
-	InputStream streamAttachment(String caseId, String attachmentId,
+	InputStream streamAttachment(long caseId, String attachmentId,
 			String url, IProgressMonitor monitor);
-	void postAttachment(String caseId, String comment, TaskAttribute attribute,
+	void postAttachment(long caseId, String comment, TaskAttribute attribute,
 			AbstractTaskAttachmentSource source, IProgressMonitor monitor);
 
 	// URL structure

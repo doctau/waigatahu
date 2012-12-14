@@ -1,5 +1,7 @@
 package com.redhat.gss.waigatahu.cases.core.client;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -24,7 +26,10 @@ import org.apache.commons.httpclient.HostConfiguration;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.auth.AuthScope;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
+import org.apache.commons.httpclient.methods.ByteArrayRequestEntity;
 import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.httpclient.methods.PutMethod;
+import org.apache.commons.httpclient.methods.RequestEntity;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.mylyn.commons.net.AbstractWebLocation;
 import org.eclipse.mylyn.commons.net.AuthenticationCredentials;
@@ -35,13 +40,13 @@ import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskAttachmentSource;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
 
-import com.redhat.gss.waigatahu.cases.util.Utils;
-import com.redhat.gss.waigatahu.cases.util.WebDownloadInputStream;
 import com.redhat.gss.strata.model.Attachment;
 import com.redhat.gss.strata.model.Attachments;
 import com.redhat.gss.strata.model.Case;
 import com.redhat.gss.strata.model.Cases;
 import com.redhat.gss.strata.model.Product;
+import com.redhat.gss.waigatahu.cases.util.Utils;
+import com.redhat.gss.waigatahu.cases.util.WebDownloadInputStream;
 
 public class RhcpClientImpl implements RhcpClient {
 	private static final String USER_AGENT = "Mylyn RHCP connector client 0.0.1";
@@ -51,6 +56,7 @@ public class RhcpClientImpl implements RhcpClient {
 	private static final String ALL_CASE_ATTACHMENTS = "/attachments";
 	
 	private static final Header ACCEPT_XML_HEADER = new Header("Accept", "application/xml");
+	private static final Header CONTENT_TYPE_XML_HEADER = new Header("Content-Type", "application/xml");
 
 	private final TaskRepository repository;
 	private final RhcpClientFactory factory;
@@ -142,6 +148,44 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
+	public PutMethod runPutRequestPath(String restPath, IProgressMonitor monitor, RequestEntity re) {
+		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
+		return runPutRequestInternal(location.getUrl() + restPath, location, monitor, re);
+	}
+	public PutMethod runPutRequestUrl(String url, IProgressMonitor monitor, RequestEntity re) {
+		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
+		return runPutRequestInternal(url, location, monitor, re);
+	}
+	private PutMethod runPutRequestInternal(String url, AbstractWebLocation location, IProgressMonitor monitor, RequestEntity re) {
+		HttpClient httpClient = createHttpClient();
+		setupClientAuthentication(httpClient, location, monitor);
+
+		HostConfiguration hostConfiguration = WebUtil.createHostConfiguration(httpClient, location, monitor);
+		PutMethod method = new PutMethod(WebUtil.getRequestPath(url));
+		method.addRequestHeader(ACCEPT_XML_HEADER);
+		method.addRequestHeader(CONTENT_TYPE_XML_HEADER);
+		method.setRequestEntity(re);
+		boolean okay = false;
+		try {
+			int status = WebUtil.execute(httpClient, hostConfiguration, method, monitor);
+
+			switch (status) {
+			case HttpURLConnection.HTTP_UNAUTHORIZED:
+			case HttpURLConnection.HTTP_FORBIDDEN:
+				throw new RuntimeException("authorisation failed");
+			default:
+				okay = true;
+				return method;
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		} finally {
+			if (!okay) {
+				WebUtil.releaseConnection(method, monitor);
+			}
+		}
+	}
+
 
 	public void validateConnection(IProgressMonitor monitor) {
 		GetMethod method = runGetRequestPath(VALIDATE_PATH, monitor);
@@ -156,7 +200,7 @@ public class RhcpClientImpl implements RhcpClient {
 				}
 				break;
 			default:
-				throw new RuntimeException("unexpected result code");
+				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 			}
 		} finally {
 			WebUtil.releaseConnection(method, monitor);
@@ -180,7 +224,7 @@ public class RhcpClientImpl implements RhcpClient {
 					throw new RuntimeException(e);
 				}
 			default:
-				throw new RuntimeException("unexpected result code");
+				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 			}
 		} finally {
 			WebUtil.releaseConnection(method, monitor);
@@ -204,7 +248,7 @@ public class RhcpClientImpl implements RhcpClient {
 					throw new RuntimeException(e);
 				}
 			default:
-				throw new RuntimeException("unexpected result code: " + method.getStatusCode());
+				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 			}
 		} finally {
 			WebUtil.releaseConnection(method, monitor);
@@ -216,7 +260,8 @@ public class RhcpClientImpl implements RhcpClient {
 		return true;
 	}
 
-	public List<Attachment> getCaseAttachments(String caseId, IProgressMonitor monitor) {
+	public List<Attachment> getCaseAttachments(long caseNumber, IProgressMonitor monitor) {
+		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
 		GetMethod method = runGetRequestPath(CASE_PREFIX + caseId + ALL_CASE_ATTACHMENTS, monitor);
 		try {
 			switch (method.getStatusCode()) {
@@ -232,15 +277,16 @@ public class RhcpClientImpl implements RhcpClient {
 					throw new RuntimeException(e);
 				}
 			default:
-				throw new RuntimeException("unexpected result code: " + method.getStatusCode());
+				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 			}
 		} finally {
 			WebUtil.releaseConnection(method, monitor);
 		}
 	}
 
-	public InputStream streamAttachment(String caseId, String attachmentId,
+	public InputStream streamAttachment(long caseNumber, String attachmentId,
 			String url, IProgressMonitor monitor) {
+		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
 		GetMethod method = runGetRequestUrl(url, monitor);
 		switch (method.getStatusCode()) {
 		case HttpURLConnection.HTTP_OK:
@@ -255,9 +301,10 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public void postAttachment(String caseId, String comment,
+	public void postAttachment(long caseNumber, String comment,
 			TaskAttribute attribute, AbstractTaskAttachmentSource source,
 			IProgressMonitor monitor) {
+		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
 		throw new IllegalArgumentException();
 	}
 
@@ -403,6 +450,28 @@ public class RhcpClientImpl implements RhcpClient {
 			throw new RuntimeException(e);
 		} catch (ExecutionException e) {
 			throw new RuntimeException(e);
+		}
+	}
+
+	public void updateCaseMetadata(long caseNumber, Case supportCase, IProgressMonitor monitor) {
+		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
+		PutMethod method = null;
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			jaxbContext.createMarshaller().marshal(supportCase, baos);
+			method = runPutRequestPath(CASE_PREFIX + caseId, monitor, new ByteArrayRequestEntity(baos.toByteArray()));
+
+			switch (method.getStatusCode()) {
+			case HttpURLConnection.HTTP_ACCEPTED:
+				// normal response
+			default:
+				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+			}
+		} catch (JAXBException e) {
+			throw new RuntimeException(e);
+		} finally {
+			if (method != null)
+				WebUtil.releaseConnection(method, monitor);
 		}
 	}
 }

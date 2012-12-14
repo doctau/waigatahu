@@ -34,19 +34,19 @@ public class CaseAttachmentHandler extends AbstractTaskAttachmentHandler {
 			throws CoreException {
 		String url = attachmentAttribute.getAttribute(TaskAttribute.ATTACHMENT_URL).getValue();
 		String attachmentId = null; //FIXME: attachmentAttribute.getAttribute(TaskAttribute.ATTACHMENT_ID).getValue();
-		String caseId = task.getTaskId();
+		long caseNumber = Long.parseLong(task.getTaskId());
 
 		RhcpClient client = connector.getClientFactory().getClient(repository);
-		return client.streamAttachment(caseId, attachmentId, url, monitor);
+		return client.streamAttachment(caseNumber, attachmentId, url, monitor);
 	}
 
 	public void postContent(TaskRepository repository, ITask task,
 			AbstractTaskAttachmentSource source, String comment,
 			TaskAttribute attachmentAttribute, IProgressMonitor monitor)
 			throws CoreException {
-		String caseId = task.getTaskId();
+		long caseNumber = Long.parseLong(task.getTaskId());
 
 		RhcpClient client = connector.getClientFactory().getClient(repository);
-		client.postAttachment(caseId, comment, attachmentAttribute.getAttribute(TaskAttribute.ATTACHMENT_FILENAME), source, monitor);
+		client.postAttachment(caseNumber, comment, attachmentAttribute.getAttribute(TaskAttribute.ATTACHMENT_FILENAME), source, monitor);
 	}
 }

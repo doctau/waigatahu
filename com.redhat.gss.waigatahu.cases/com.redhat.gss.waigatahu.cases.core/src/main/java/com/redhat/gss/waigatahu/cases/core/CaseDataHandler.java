@@ -19,6 +19,7 @@ import org.eclipse.mylyn.commons.net.Policy;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITaskMapping;
 import org.eclipse.mylyn.tasks.core.RepositoryResponse;
+import org.eclipse.mylyn.tasks.core.RepositoryResponse.ResponseKind;
 import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskDataHandler;
@@ -30,11 +31,11 @@ import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskDataCollector;
 import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
 
-import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
 import com.redhat.gss.strata.model.Attachment;
 import com.redhat.gss.strata.model.Case;
 import com.redhat.gss.strata.model.Comment;
 import com.redhat.gss.strata.model.Product;
+import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
 
 public class CaseDataHandler extends AbstractTaskDataHandler {
 	private final String TASK_DATA_VERSION = "1";
@@ -48,7 +49,32 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 	public RepositoryResponse postTaskData(TaskRepository repository,
 			TaskData taskData, Set<TaskAttribute> oldAttributes,
 			IProgressMonitor monitor) throws CoreException {
+		RhcpClient client = connector.getClientFactory().getClient(repository);
+		if (taskData.isNew()) {
+			return createCase(client, repository, taskData, monitor);
+		} else {
+			return updateCase(client, repository, taskData, oldAttributes, monitor);
+		}
+	}
+
+	private RepositoryResponse updateCase(RhcpClient client, TaskRepository repository, TaskData taskData,
+			Set<TaskAttribute> oldAttributes, IProgressMonitor monitor) {
+		try {
+			monitor.beginTask("Updating Case", IProgressMonitor.UNKNOWN);
+			Case supportCase = createCaseFromTaskData(repository, taskData, monitor);
+			client.updateCaseMetadata(Long.parseLong(supportCase.getCaseNumber()), supportCase, monitor);
+			
+			//FIXME: post attachments
+			return new RepositoryResponse(ResponseKind.TASK_CREATED, taskData.getTaskId());
+		} catch (CoreException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private RepositoryResponse createCase(RhcpClient client, TaskRepository repository, TaskData taskData,
+			IProgressMonitor monitor) {
 		throw new IllegalArgumentException();
+		
 	}
 
 	public boolean initializeTaskData(TaskRepository repository, TaskData data,
@@ -63,15 +89,17 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	public TaskData getTaskData(TaskRepository repository, String taskId,
 			IProgressMonitor monitor) throws CoreException {
+		long caseNumber = Long.parseLong(taskId);
 		IProgressMonitor myMonitor = Policy.monitorFor(monitor);
 		try {
 			RhcpClient client = connector.getClientFactory().getClient(repository);
 
 			myMonitor.beginTask("Task Download", IProgressMonitor.UNKNOWN);
-			TaskData data = downloadTaskData(client, repository, Long.parseLong(taskId), myMonitor);
+			TaskData data = downloadTaskData(client, repository, caseNumber, myMonitor);
 
 			myMonitor.beginTask("Listing Attachments", IProgressMonitor.UNKNOWN);
-			updateAttachmentList(client, repository, data, myMonitor);
+			updateAttachmentList(client, repository, caseNumber, data, myMonitor);
+			data.setPartial(false);
 			
 			return data;
 		} finally {
@@ -120,14 +148,17 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		taskData.setVersion(TASK_DATA_VERSION);
 		createDefaultAttributes(taskData, client);
 		updateTaskData(client, repository, taskData, supportCase);
+
+		// attachments are not loaded yet
+		taskData.setPartial(true);
 		return taskData;
 	}
 
 
 	// query the attachment list and update the TaskData
 	private void updateAttachmentList(RhcpClient client,
-			TaskRepository repository, TaskData data, IProgressMonitor monitor) {
-		List<Attachment> currentAttachments = client.getCaseAttachments(data.getTaskId(), monitor);
+			TaskRepository repository, long caseNumber, TaskData data, IProgressMonitor monitor) {
+		List<Attachment> currentAttachments = client.getCaseAttachments(caseNumber, monitor);
 		
 		TaskAttribute root = data.getRoot();
 
@@ -165,9 +196,8 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		}
 		
 		//add newAttachments
-		long suffix = findHighestSuffix(attachmentAttributes, TaskAttribute.PREFIX_ATTACHMENT);
 		for (Attachment a: newAttachments) {
-			TaskAttribute attr = root.createAttribute(TaskAttribute.PREFIX_ATTACHMENT + /*a.getUuid()*/ (suffix + 2));
+			TaskAttribute attr = root.createAttribute(TaskAttribute.PREFIX_ATTACHMENT + a.getUuid());
 			TaskAttachmentMapper mapper = CaseAttachmentMapper.createFrom(repository, a);
 			mapper.applyTo(attr);
 		}
@@ -226,12 +256,16 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		addAttribute(taskData, TaskAttribute.DESCRIPTION, null,
 				TaskAttribute.TYPE_LONG_TEXT, "Description",
 				true, readOnly);
+		addAttribute(taskData, TaskAttribute.TASK_KEY, null,
+				TaskAttribute.TYPE_LONG, "Case number",
+				false, readOnly);
 	}
 
 	private void updateTaskData(RhcpClient client, TaskRepository repository, TaskData taskData, Case supportCase) {
 		TaskAttribute root = taskData.getRoot();
 
 
+		root.getAttribute(TaskAttribute.TASK_KEY).setValue(supportCase.getCaseNumber());
 		root.getAttribute(TaskAttribute.DATE_CREATION).setValue(supportCase.getCreatedDate().getTime().toString());
 		root.getAttribute(TaskAttribute.DATE_MODIFICATION).setValue(supportCase.getLastModifiedDate().getTime().toString());
 		root.getAttribute(TaskAttribute.SUMMARY).setValue(supportCase.getSummary());
@@ -289,8 +323,23 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			}
 			count++;
 		}
-		
+	}
+	
+	private Case createCaseFromTaskData(TaskRepository repository, TaskData taskData, IProgressMonitor monitor) throws CoreException {
+		TaskAttribute root = taskData.getRoot();
 
+		Case supportCase = new Case();
+		TaskAttribute keyAttr = root.getAttribute(TaskAttribute.TASK_KEY);
+		if (keyAttr != null)
+			supportCase.setCaseNumber(keyAttr.getValue());
+		supportCase.setSummary(root.getAttribute(TaskAttribute.SUMMARY).getValue());
+		supportCase.setStatus(root.getAttribute(TaskAttribute.STATUS).getValue());
+		supportCase.setSeverity(root.getAttribute(TaskAttribute.SEVERITY).getValue());
+		supportCase.setProduct(root.getAttribute(TaskAttribute.PRODUCT).getValue());
+		supportCase.setVersion(root.getAttribute(TaskAttribute.VERSION).getValue());
+
+		// root.getAttribute(TaskAttribute.USER_REPORTER).setValue(supportCase.getContactName());
+		return supportCase;
 	}
 
 	private String dateToString(Calendar date) {
@@ -307,17 +356,6 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	private String blankNull(String s) {
 		return (s != null) ? s : "";
-	}
-
-	private long findHighestSuffix(Set<TaskAttribute> attrs, String prefix) {
-		int len = prefix.length();
-		long max = -1;
-		for (TaskAttribute ta: attrs) {
-			long l = Long.parseLong(ta.getId().substring(len));
-			if (l > max)
-				max = l;
-		}
-		return max;
 	}
 
 	private TaskAttribute addAttribute(TaskData taskData, String key, String value,
