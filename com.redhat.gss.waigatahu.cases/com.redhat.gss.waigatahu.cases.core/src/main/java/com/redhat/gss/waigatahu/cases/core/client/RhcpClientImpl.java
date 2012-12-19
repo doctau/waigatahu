@@ -1,6 +1,5 @@
 package com.redhat.gss.waigatahu.cases.core.client;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +27,7 @@ import org.apache.commons.httpclient.auth.AuthScope;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.methods.ByteArrayRequestEntity;
 import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.PutMethod;
 import org.apache.commons.httpclient.methods.RequestEntity;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -40,28 +40,28 @@ import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskAttachmentSource;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
 
+import com.redhat.gss.strata.model.Account;
 import com.redhat.gss.strata.model.Attachment;
 import com.redhat.gss.strata.model.Attachments;
 import com.redhat.gss.strata.model.Case;
 import com.redhat.gss.strata.model.Cases;
 import com.redhat.gss.strata.model.Product;
-import com.redhat.gss.waigatahu.cases.util.Utils;
+import com.redhat.gss.waigatahu.cases.core.CaseId;
 import com.redhat.gss.waigatahu.cases.util.WebDownloadInputStream;
 
 public class RhcpClientImpl implements RhcpClient {
-	private static final String USER_AGENT = "Mylyn RHCP connector client 0.0.1";
+	private static final String USER_AGENT = "Waigatahu 0.0.1";
 	private static final String VALIDATE_PATH = "/accounts/defaultAccount";
 	private static final String ALL_OPEN_CASES_PATH = "/cases/";
-	private static final String CASE_PREFIX = "/cases/";
+	private static final String CASE_CREATE_PATH = "/cases";
 	private static final String ALL_CASE_ATTACHMENTS = "/attachments";
-	
+
 	private static final Header ACCEPT_XML_HEADER = new Header("Accept", "application/xml");
 	private static final Header CONTENT_TYPE_XML_HEADER = new Header("Content-Type", "application/xml");
 
 	private final TaskRepository repository;
-	private final RhcpClientFactory factory;
 	private final JAXBContext jaxbContext;
-	
+
 	// cached values
 	Future<List<Product>> products = null;
 	ConcurrentMap<String, Future<List<String>>> versions = new ConcurrentHashMap<String, Future<List<String>>>();
@@ -69,27 +69,14 @@ public class RhcpClientImpl implements RhcpClient {
 	Future<List<String>> severities = null;
 	Future<List<String>> statuses = null;
 
-	public RhcpClientImpl(TaskRepository repository, RhcpClientFactory factory) {
+	public RhcpClientImpl(TaskRepository repository) {
 		this.repository = repository;
-		this.factory = factory;
 
 		try {
 			this.jaxbContext = JAXBContext.newInstance(Cases.class, Case.class);
 		} catch (JAXBException e) {
 			throw new RuntimeException(e);
 		}
-	}
-
-	public String getRepositoryUrlFromCaseUrl(String taskUrl) {
-		return factory.getRepositoryUrlFromCaseUrl(taskUrl);
-	}
-
-	public long getCaseNumberFromCaseUrl(String taskUrl) {
-		return factory.getCaseNumberFromCaseUrl(taskUrl);
-	}
-
-	public String getCaseUrl(String repositoryUrl, long caseNumber) {
-		return factory.getCaseUrl(repositoryUrl, caseNumber);
 	}
 
 	protected HttpClient createHttpClient() {
@@ -186,6 +173,44 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
+	public PostMethod runPostRequestPath(String restPath, IProgressMonitor monitor, RequestEntity re) {
+		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
+		return runPostRequestInternal(location.getUrl() + restPath, location, monitor, re);
+	}
+	public PostMethod runPostRequestUrl(String url, IProgressMonitor monitor, RequestEntity re) {
+		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
+		return runPostRequestInternal(url, location, monitor, re);
+	}
+	private PostMethod runPostRequestInternal(String url, AbstractWebLocation location, IProgressMonitor monitor, RequestEntity re) {
+		HttpClient httpClient = createHttpClient();
+		setupClientAuthentication(httpClient, location, monitor);
+
+		HostConfiguration hostConfiguration = WebUtil.createHostConfiguration(httpClient, location, monitor);
+		PostMethod method = new PostMethod(WebUtil.getRequestPath(url));
+		method.addRequestHeader(ACCEPT_XML_HEADER);
+		method.addRequestHeader(CONTENT_TYPE_XML_HEADER);
+		method.setRequestEntity(re);
+		boolean okay = false;
+		try {
+			int status = WebUtil.execute(httpClient, hostConfiguration, method, monitor);
+
+			switch (status) {
+			case HttpURLConnection.HTTP_UNAUTHORIZED:
+			case HttpURLConnection.HTTP_FORBIDDEN:
+				throw new RuntimeException("authorisation failed");
+			default:
+				okay = true;
+				return method;
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		} finally {
+			if (!okay) {
+				WebUtil.releaseConnection(method, monitor);
+			}
+		}
+	}
+
 
 	public void validateConnection(IProgressMonitor monitor) {
 		GetMethod method = runGetRequestPath(VALIDATE_PATH, monitor);
@@ -194,8 +219,12 @@ public class RhcpClientImpl implements RhcpClient {
 			case HttpURLConnection.HTTP_OK:
 				try {
 					InputStream is = method.getResponseBodyAsStream();
-					// FIXME: verify data
+				    Unmarshaller um = jaxbContext.createUnmarshaller();
+				    Account account = (Account) um.unmarshal(is);
+				    // FIXME: no data is set on it???
 				} catch (IOException e) {
+					throw new RuntimeException(e);
+				} catch (JAXBException e) {
 					throw new RuntimeException(e);
 				}
 				break;
@@ -231,9 +260,8 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public Case getCase(long caseNumber, IProgressMonitor monitor) {
-		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
-		GetMethod method = runGetRequestPath(CASE_PREFIX + caseId, monitor);
+	public Case getCase(CaseId caseId, IProgressMonitor monitor) {
+		GetMethod method = runGetRequestUrl(caseId.getUrl(), monitor);
 		try {
 			switch (method.getStatusCode()) {
 			case HttpURLConnection.HTTP_OK:
@@ -260,9 +288,8 @@ public class RhcpClientImpl implements RhcpClient {
 		return true;
 	}
 
-	public List<Attachment> getCaseAttachments(long caseNumber, IProgressMonitor monitor) {
-		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
-		GetMethod method = runGetRequestPath(CASE_PREFIX + caseId + ALL_CASE_ATTACHMENTS, monitor);
+	public List<Attachment> getCaseAttachments(CaseId caseId, IProgressMonitor monitor) {
+		GetMethod method = runGetRequestUrl(caseId.getUrl() + ALL_CASE_ATTACHMENTS, monitor);
 		try {
 			switch (method.getStatusCode()) {
 			case HttpURLConnection.HTTP_OK:
@@ -284,9 +311,8 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public InputStream streamAttachment(long caseNumber, String attachmentId,
+	public InputStream streamAttachment(CaseId caseId, String attachmentId,
 			String url, IProgressMonitor monitor) {
-		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
 		GetMethod method = runGetRequestUrl(url, monitor);
 		switch (method.getStatusCode()) {
 		case HttpURLConnection.HTTP_OK:
@@ -301,11 +327,70 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public void postAttachment(long caseNumber, String comment,
+	public void postAttachment(CaseId caseId, String comment,
 			TaskAttribute attribute, AbstractTaskAttachmentSource source,
 			IProgressMonitor monitor) {
-		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
 		throw new IllegalArgumentException();
+	}
+
+	public void updateCaseMetadata(CaseId caseId, Case supportCase, IProgressMonitor monitor) {
+		PutMethod method = null;
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			jaxbContext.createMarshaller().marshal(supportCase, baos);
+			method = runPutRequestUrl(caseId.getUrl(), monitor, new ByteArrayRequestEntity(baos.toByteArray()));
+
+			switch (method.getStatusCode()) {
+			case HttpURLConnection.HTTP_ACCEPTED:
+				// normal response
+			default:
+				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+			}
+		} catch (JAXBException e) {
+			throw new RuntimeException(e);
+		} finally {
+			if (method != null)
+				WebUtil.releaseConnection(method, monitor);
+		}
+	}
+
+	public Case createCase(Case supportCase, IProgressMonitor monitor) {
+		PostMethod method = null;
+		try {
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			jaxbContext.createMarshaller().marshal(supportCase, baos);
+			method = runPostRequestPath(CASE_CREATE_PATH, monitor, new ByteArrayRequestEntity(baos.toByteArray()));
+
+			switch (method.getStatusCode()) {
+			case HttpURLConnection.HTTP_CREATED:
+				// normal response
+				String  location = method.getResponseHeader("Location").getValue();
+				//FIXME: don't parse and un-parse the number from the URL
+				return getCase(new CaseId(location), monitor);
+			case HttpURLConnection.HTTP_NOT_ACCEPTABLE:
+				throw new RuntimeException("Case data is not valid");
+			default:
+				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+			}
+		} catch (JAXBException e) {
+			throw new RuntimeException(e);
+		} finally {
+			if (method != null)
+				WebUtil.releaseConnection(method, monitor);
+			method = null;
+		}
+	}
+
+	
+	/* reference data */
+	public void updateData() {
+		synchronized (this) {
+			products = null;
+			types = null;
+			severities = null;
+			statuses = null;
+			versions.clear();
+		}
 	}
 
 	public List<Product> getProducts() {
@@ -450,28 +535,6 @@ public class RhcpClientImpl implements RhcpClient {
 			throw new RuntimeException(e);
 		} catch (ExecutionException e) {
 			throw new RuntimeException(e);
-		}
-	}
-
-	public void updateCaseMetadata(long caseNumber, Case supportCase, IProgressMonitor monitor) {
-		String caseId = Utils.padStringLeft(8, '0', Long.toString(caseNumber));
-		PutMethod method = null;
-		try {
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			jaxbContext.createMarshaller().marshal(supportCase, baos);
-			method = runPutRequestPath(CASE_PREFIX + caseId, monitor, new ByteArrayRequestEntity(baos.toByteArray()));
-
-			switch (method.getStatusCode()) {
-			case HttpURLConnection.HTTP_ACCEPTED:
-				// normal response
-			default:
-				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
-			}
-		} catch (JAXBException e) {
-			throw new RuntimeException(e);
-		} finally {
-			if (method != null)
-				WebUtil.releaseConnection(method, monitor);
 		}
 	}
 }

@@ -32,21 +32,21 @@ public class CaseAttachmentHandler extends AbstractTaskAttachmentHandler {
 	public InputStream getContent(TaskRepository repository, ITask task,
 			TaskAttribute attachmentAttribute, IProgressMonitor monitor)
 			throws CoreException {
+		CaseId caseId = connector.taskIdToCaseUrl(task.getTaskId());
 		String url = attachmentAttribute.getAttribute(TaskAttribute.ATTACHMENT_URL).getValue();
 		String attachmentId = null; //FIXME: attachmentAttribute.getAttribute(TaskAttribute.ATTACHMENT_ID).getValue();
-		long caseNumber = Long.parseLong(task.getTaskId());
 
-		RhcpClient client = connector.getClientFactory().getClient(repository);
-		return client.streamAttachment(caseNumber, attachmentId, url, monitor);
+		RhcpClient client = connector.getClient(repository);
+		return client.streamAttachment(caseId, attachmentId, url, monitor);
 	}
 
 	public void postContent(TaskRepository repository, ITask task,
 			AbstractTaskAttachmentSource source, String comment,
 			TaskAttribute attachmentAttribute, IProgressMonitor monitor)
 			throws CoreException {
-		long caseNumber = Long.parseLong(task.getTaskId());
+		CaseId caseId = connector.taskIdToCaseUrl(task.getTaskId());
 
-		RhcpClient client = connector.getClientFactory().getClient(repository);
-		client.postAttachment(caseNumber, comment, attachmentAttribute.getAttribute(TaskAttribute.ATTACHMENT_FILENAME), source, monitor);
+		RhcpClient client = connector.getClient(repository);
+		client.postAttachment(caseId, comment, attachmentAttribute.getAttribute(TaskAttribute.ATTACHMENT_FILENAME), source, monitor);
 	}
 }

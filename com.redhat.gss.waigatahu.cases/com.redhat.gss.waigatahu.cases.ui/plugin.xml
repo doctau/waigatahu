@@ -12,6 +12,15 @@
    </extension>
 
    <extension
+         point="org.eclipse.mylyn.tasks.core.templates">
+      <repository
+            addAutomatically="false"
+            anonymous="false"
+            label="Red Hat Customer Portal"
+            repositoryKind="com.redhat.gss.waigatahu.cases"
+            urlRepository="https://access.redhat.com/rs"/>
+   </extension> 
+   <extension
          point="org.eclipse.mylyn.tasks.ui.editors">
       <pageFactory
             class="com.redhat.gss.waigatahu.cases.ui.editor.CaseEditorPageFactory"

@@ -49,7 +49,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 	public RepositoryResponse postTaskData(TaskRepository repository,
 			TaskData taskData, Set<TaskAttribute> oldAttributes,
 			IProgressMonitor monitor) throws CoreException {
-		RhcpClient client = connector.getClientFactory().getClient(repository);
+		RhcpClient client = connector.getClient(repository);
 		if (taskData.isNew()) {
 			return createCase(client, repository, taskData, monitor);
 		} else {
@@ -62,10 +62,11 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		try {
 			monitor.beginTask("Updating Case", IProgressMonitor.UNKNOWN);
 			Case supportCase = createCaseFromTaskData(repository, taskData, monitor);
-			client.updateCaseMetadata(Long.parseLong(supportCase.getCaseNumber()), supportCase, monitor);
+			client.updateCaseMetadata(new CaseId(supportCase.getUri()), supportCase, monitor);
+			
 			
 			//FIXME: post attachments
-			return new RepositoryResponse(ResponseKind.TASK_CREATED, taskData.getTaskId());
+			return new RepositoryResponse(ResponseKind.TASK_UPDATED, taskData.getTaskId());
 		} catch (CoreException e) {
 			throw new RuntimeException(e);
 		}
@@ -73,14 +74,26 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	private RepositoryResponse createCase(RhcpClient client, TaskRepository repository, TaskData taskData,
 			IProgressMonitor monitor) {
-		throw new IllegalArgumentException();
-		
+		try {
+			monitor.beginTask("Creating Case", IProgressMonitor.UNKNOWN);
+			Case tempCase = createCaseFromTaskData(repository, taskData, monitor);
+			Case createdCase = client.createCase(tempCase, monitor);
+			updateTaskData(client, repository, taskData, createdCase);
+
+			//FIXME: post attachments
+			return new RepositoryResponse(ResponseKind.TASK_CREATED, taskData.getTaskId());
+		} catch (CoreException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
-	public boolean initializeTaskData(TaskRepository repository, TaskData data,
+	public boolean initializeTaskData(TaskRepository repository, TaskData taskData,
 			ITaskMapping initializationData, IProgressMonitor monitor)
 			throws CoreException {
-		throw new IllegalArgumentException();
+		RhcpClient client = connector.getClient(repository);
+		taskData.setVersion(TASK_DATA_VERSION);
+		createDefaultAttributes(taskData, client);
+		return true;
 	}
 
 	public TaskAttributeMapper getAttributeMapper(TaskRepository repository) {
@@ -89,16 +102,16 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	public TaskData getTaskData(TaskRepository repository, String taskId,
 			IProgressMonitor monitor) throws CoreException {
-		long caseNumber = Long.parseLong(taskId);
+		CaseId caseUrl = connector.taskIdToCaseUrl(taskId);
 		IProgressMonitor myMonitor = Policy.monitorFor(monitor);
 		try {
-			RhcpClient client = connector.getClientFactory().getClient(repository);
+			RhcpClient client = connector.getClient(repository);
 
 			myMonitor.beginTask("Task Download", IProgressMonitor.UNKNOWN);
-			TaskData data = downloadTaskData(client, repository, caseNumber, myMonitor);
+			TaskData data = downloadTaskData(client, repository, caseUrl, myMonitor);
 
 			myMonitor.beginTask("Listing Attachments", IProgressMonitor.UNKNOWN);
-			updateAttachmentList(client, repository, caseNumber, data, myMonitor);
+			updateAttachmentList(client, repository, caseUrl, data, myMonitor);
 			data.setPartial(false);
 			
 			return data;
@@ -113,7 +126,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		IProgressMonitor myMonitor = Policy.monitorFor(monitor);
 		try {
 			myMonitor.beginTask("Running query", IProgressMonitor.UNKNOWN);
-			RhcpClient client = connector.getClientFactory().getClient(repository);
+			RhcpClient client = connector.getClient(repository);
 
 			Collection<Case> cases;
 
@@ -121,11 +134,14 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			cases = client.getAllOpenCases(client, monitor);
 
 			for (Case c: cases) {
-				TaskData task = createTaskDataFromCase(client, repository, c, monitor);
-				collector.accept(task);
+				String taskId = connector.getTaskIdFromTaskUrl(c.getUri());
+				try {
+					TaskData task = createTaskDataFromCase(client, repository, c, monitor, taskId);
+					collector.accept(task);
+				} catch (CoreException e) {
+					collector.failed(taskId, new Status(Status.ERROR, connector.getConnectorKind(), "FAILED!", e));
+				}
 			}
-		} catch (CoreException e) {
-			return RepositoryStatus.createInternalError(WaigatahuCaseCorePlugin.CONNECTOR_KIND, "ERROR!", e);
 		} finally {
 			myMonitor.done();
 		}
@@ -135,16 +151,17 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 	
 
 	private TaskData downloadTaskData(RhcpClient client, TaskRepository repository,
-			long caseId, IProgressMonitor monitor)
+			CaseId caseId, IProgressMonitor monitor)
 			throws CoreException {
 		Case supportCase = client.getCase(caseId, monitor);
-		return createTaskDataFromCase(client, repository, supportCase, monitor);
+		String taskId = connector.getTaskIdFromTaskUrl(supportCase.getUri());
+		return createTaskDataFromCase(client, repository, supportCase, monitor, taskId);
 	}
 	
 	private TaskData createTaskDataFromCase(RhcpClient client, TaskRepository repository,
-			Case supportCase, IProgressMonitor monitor) throws CoreException {
+			Case supportCase, IProgressMonitor monitor, String taskId) throws CoreException {
 		TaskData taskData = new TaskData(getAttributeMapper(repository), WaigatahuCaseCorePlugin.CONNECTOR_KIND,
-				repository.getRepositoryUrl(), supportCase.getCaseNumber() + "");
+				repository.getRepositoryUrl(), taskId);
 		taskData.setVersion(TASK_DATA_VERSION);
 		createDefaultAttributes(taskData, client);
 		updateTaskData(client, repository, taskData, supportCase);
@@ -157,8 +174,8 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	// query the attachment list and update the TaskData
 	private void updateAttachmentList(RhcpClient client,
-			TaskRepository repository, long caseNumber, TaskData data, IProgressMonitor monitor) {
-		List<Attachment> currentAttachments = client.getCaseAttachments(caseNumber, monitor);
+			TaskRepository repository, CaseId caseId, TaskData data, IProgressMonitor monitor) {
+		List<Attachment> currentAttachments = client.getCaseAttachments(caseId, monitor);
 		
 		TaskAttribute root = data.getRoot();
 

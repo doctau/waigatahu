@@ -8,18 +8,16 @@ import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.data.TaskAttachmentModel;
 import org.eclipse.mylyn.tasks.ui.AbstractRepositoryConnectorUi;
 import org.eclipse.mylyn.tasks.ui.wizards.ITaskRepositoryPage;
-import org.eclipse.mylyn.tasks.ui.wizards.RepositoryQueryWizard;
+import org.eclipse.mylyn.tasks.ui.wizards.NewTaskWizard;
 
 import com.redhat.gss.waigatahu.cases.core.CaseRepositoryConnector;
 import com.redhat.gss.waigatahu.cases.core.WaigatahuCaseCorePlugin;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactory;
 import com.redhat.gss.waigatahu.cases.ui.attachment.CaseAttachmentPage;
-import com.redhat.gss.waigatahu.cases.ui.query.CaseQueryPage;
 
 public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 	private final String REPOSITORY_PAGE_TITLE = "REPOSITORY_PAGE_TITLE";
 	private final String REPOSITORY_PAGE_DESCRIPTION = "REPOSITORY_PAGE_DESCRIPTION";
-	private final String QUERY_PAGE_DESCRIPTION = "QUERY_PAGE_DESCRIPTION";
 	
 	private CaseRepositoryConnector connector;
 	
@@ -33,15 +31,11 @@ public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 	}
 
 	public ITaskRepositoryPage getSettingsPage(TaskRepository taskRepository) {
-		RhcpClientFactory clientFactory = connector.getClientFactory();
-		return new CaseRepositoryPage(REPOSITORY_PAGE_TITLE, REPOSITORY_PAGE_DESCRIPTION, taskRepository, clientFactory);
+		return new CaseRepositoryPage(REPOSITORY_PAGE_TITLE, REPOSITORY_PAGE_DESCRIPTION, taskRepository, connector);
 	}
 
-	public IWizard getQueryWizard(TaskRepository repository,
-			IRepositoryQuery query) {
-		RepositoryQueryWizard wizard = new RepositoryQueryWizard(repository);
-		wizard.addPage(new CaseQueryPage(QUERY_PAGE_DESCRIPTION, repository, query));
-		return wizard;
+	public IWizard getQueryWizard(TaskRepository repository, IRepositoryQuery query) {
+		return new CaseQueryWizard(repository, query);
 	}
 
 	public IWizardPage getTaskAttachmentPage(TaskAttachmentModel model) {
@@ -49,7 +43,8 @@ public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 	}
 
 	public IWizard getNewTaskWizard(TaskRepository repository, ITaskMapping selection) {
-		throw new IllegalArgumentException();
+		// no pages, so create the task immediately
+		return new NewTaskWizard(repository, selection);
 	}
 
 	public boolean hasSearchPage() {

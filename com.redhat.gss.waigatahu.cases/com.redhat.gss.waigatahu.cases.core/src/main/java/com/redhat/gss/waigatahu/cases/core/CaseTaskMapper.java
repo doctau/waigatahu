@@ -8,11 +8,11 @@ import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
 
 // Maps TaskData to ITasks
 public class CaseTaskMapper extends TaskMapper {
-	private final RhcpClient client;
+	private final CaseRepositoryConnector connector;
 
-	public CaseTaskMapper(TaskData taskData, RhcpClient client) {
+	public CaseTaskMapper(TaskData taskData, CaseRepositoryConnector connector) {
 		super(taskData);
-		this.client = client;
+		this.connector = connector;
 	}
 
 	public boolean applyTo(ITask task) {
@@ -22,7 +22,8 @@ public class CaseTaskMapper extends TaskMapper {
 		// TODO: map custom things from taskData to task
 		//TaskAttribute.
 
-		task.setUrl(client.getCaseUrl(taskData.getRepositoryUrl(), Long.parseLong(getTaskData().getTaskId())));
+		
+		task.setUrl(connector.taskIdToCaseUrl(taskData.getTaskId()).getUrl());
 		return ret;
 	}
 

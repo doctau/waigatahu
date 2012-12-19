@@ -1,5 +1,10 @@
 package com.redhat.gss.waigatahu.cases.core;
 
+import java.lang.ref.Reference;
+import java.lang.ref.SoftReference;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -17,11 +22,14 @@ import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactory;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactoryImpl;
 
-public class CaseRepositoryConnector extends AbstractRepositoryConnector {
+public class CaseRepositoryConnector extends AbstractRepositoryConnector implements RhcpClientFactory {
 	private static final String LABEL = "Red Hat Customer Portal";
 	
 	private final CaseDataHandler taskDataHandler = new CaseDataHandler(this);
 	private final AbstractTaskAttachmentHandler taskAttachmentHandler = new CaseAttachmentHandler(this);
+
+	private final RhcpClientFactory factory = new RhcpClientFactoryImpl();
+	private final Map<TaskRepository, RhcpClient> clients = new HashMap<TaskRepository, RhcpClient>();
 
 	public String getConnectorKind() {
 		return WaigatahuCaseCorePlugin.CONNECTOR_KIND;
@@ -51,8 +59,7 @@ public class CaseRepositoryConnector extends AbstractRepositoryConnector {
 	}
 	
 	public boolean canCreateNewTask(TaskRepository repository) {
-		RhcpClient client = getClientFactory().getClient(repository);
-		return client.canCreateCases();
+		return getClient(repository).canCreateCases();
 	}
 
 	public boolean hasTaskChanged(TaskRepository taskRepository, ITask task, TaskData taskData) {
@@ -65,32 +72,56 @@ public class CaseRepositoryConnector extends AbstractRepositoryConnector {
 
 
 	public CaseTaskMapper getTaskMapping(TaskData taskData) {
-		TaskRepository repository = taskData.getAttributeMapper().getTaskRepository();
-		RhcpClient client = getClientFactory().getClient(repository);
-		return new CaseTaskMapper(taskData, client);
+		return new CaseTaskMapper(taskData, this);
 	}
 
-	public RhcpClientFactory getClientFactory() {
-		return new RhcpClientFactoryImpl();
-	}
 
+	public RhcpClient getClient(TaskRepository repository) {
+		synchronized (this) {
+			RhcpClient ref = clients.get(repository);
+			if (ref != null)
+				return ref;
+		}
+		RhcpClient client = factory.getClient(repository);
+		synchronized (this) {
+			RhcpClient old = clients.put(repository, client);
+			if (old != null) {
+				// revert
+				 clients.put(repository, old);
+				 return old;
+			} else {
+				return client;
+			}
+		}
+	}
+	
+
+	/*
+	 * Task ID handling
+	 */
 	public String getRepositoryUrlFromTaskUrl(String taskUrl) {
-		return getClientFactory().getRepositoryUrlFromCaseUrl(taskUrl);
-	}
-
-	public String getTaskIdFromTaskUrl(String taskUrl) {
-		return Long.toString(getClientFactory().getCaseNumberFromCaseUrl(taskUrl));
+		throw new IllegalArgumentException();
 	}
 
 	public String getTaskUrl(String repositoryUrl, String taskId) {
-		return getClientFactory().getCaseUrl(repositoryUrl, Long.parseLong(taskId));
+		return taskIdToCaseUrl(taskId).getUrl();
+	}
+	public String getTaskIdFromTaskUrl(String taskUrl) {
+		return "rhcp:" + taskUrl;
+	}
+
+	public CaseId taskIdToCaseUrl(String taskId) {
+		if (!taskId.startsWith("rhcp:"))
+			throw new IllegalArgumentException();
+		return new CaseId(taskId.substring("rhcp:".length()));
 	}
 
 	public void updateRepositoryConfiguration(TaskRepository taskRepository,
 			IProgressMonitor monitor) throws CoreException {
-		throw new IllegalArgumentException();
+		RhcpClient client = getClient(taskRepository);
+		client.updateData();
 	}
-	
+
 	
 
 	public AbstractTaskDataHandler getTaskDataHandler() {
