@@ -1,7 +1,5 @@
 package com.redhat.gss.waigatahu.cases.core;
 
-import java.lang.ref.Reference;
-import java.lang.ref.SoftReference;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,6 +9,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.mylyn.tasks.core.AbstractRepositoryConnector;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITask;
+import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskAttachmentHandler;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskDataHandler;
@@ -18,6 +17,7 @@ import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskDataCollector;
 import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
 
+import com.redhat.gss.waigatahu.cases.core.client.LoginException;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactory;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactoryImpl;
@@ -41,7 +41,11 @@ public class CaseRepositoryConnector extends AbstractRepositoryConnector impleme
 
 	public TaskData getTaskData(TaskRepository repository, String taskId,
 			IProgressMonitor monitor) throws CoreException {
-		return taskDataHandler.getTaskData(repository, taskId, monitor);
+		try {
+			return taskDataHandler.getTaskData(repository, taskId, monitor);
+		} catch (LoginException e) {
+			throw new CoreException(exceptionToStatus(repository, e));
+		}
 	}
 
 	public String getLabel() {
@@ -55,19 +59,43 @@ public class CaseRepositoryConnector extends AbstractRepositoryConnector impleme
 	public IStatus performQuery(TaskRepository repository,
 			IRepositoryQuery query, TaskDataCollector collector,
 			ISynchronizationSession session, IProgressMonitor monitor) {
-		return taskDataHandler.performQuery(repository, query, collector, session, monitor);
+		try {
+			return taskDataHandler.performQuery(repository, query, collector, session, monitor);
+		} catch (LoginException e) {
+			return exceptionToStatus(repository, e);
+		}
 	}
 	
 	public boolean canCreateNewTask(TaskRepository repository) {
-		return getClient(repository).canCreateCases();
+		try {
+			return getClient(repository).canCreateCases();
+		} catch (LoginException e) {
+			throw new RuntimeException(new CoreException(exceptionToStatus(repository, e)));
+		}
 	}
 
 	public boolean hasTaskChanged(TaskRepository taskRepository, ITask task, TaskData taskData) {
-		return getTaskMapping(taskData).hasChanges(task);
+		try {
+			return getTaskMapping(taskData).hasChanges(task);
+		} catch (LoginException e) {
+			throw new RuntimeException(new CoreException(exceptionToStatus(taskRepository, e)));
+		}
 	}
 
 	public void updateTaskFromTaskData(TaskRepository repository, ITask task, TaskData taskData) {
-		getTaskMapping(taskData).applyTo(task);
+		try {
+			getTaskMapping(taskData).applyTo(task);
+		} catch (LoginException e) {
+			throw new RuntimeException(new CoreException(exceptionToStatus(repository, e)));
+		}
+	}
+
+	private IStatus exceptionToStatus(TaskRepository repository, Exception e) {
+		if (e instanceof LoginException) {
+			return RepositoryStatus.createLoginError(repository.getRepositoryUrl(), WaigatahuCaseCorePlugin.CONNECTOR_KIND);
+		} else {
+			return new RepositoryStatus(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, RepositoryStatus.ERROR_INTERNAL, "FAILED!", e);
+		}
 	}
 
 

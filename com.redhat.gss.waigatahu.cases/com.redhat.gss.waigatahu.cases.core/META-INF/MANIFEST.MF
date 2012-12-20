@@ -12,10 +12,12 @@ Import-Package: com.redhat.gss.strata.model,
  org.apache.commons.httpclient;version="3.1.0",
  org.eclipse.mylyn.commons.core,
  org.eclipse.mylyn.commons.net,
+ org.eclipse.mylyn.internal.commons.net,
  org.eclipse.mylyn.tasks.core,
  org.eclipse.mylyn.tasks.core.data,
  org.eclipse.mylyn.tasks.core.sync
-Export-Package: com.redhat.gss.waigatahu.cases.core,
+Export-Package: com.redhat.gss.strata.model,
+ com.redhat.gss.waigatahu.cases.core,
  com.redhat.gss.waigatahu.cases.core.client,
- com.redhat.gss.strata.model
+ com.redhat.gss.waigatahu.cases.data
 Bundle-ClassPath: .

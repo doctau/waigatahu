@@ -8,10 +8,15 @@ import com.redhat.gss.waigatahu.cases.ui.query.CaseQueryPage;
 
 public class CaseQueryWizard extends RepositoryQueryWizard {
 	private final String QUERY_PAGE_DESCRIPTION = "QUERY_PAGE_DESCRIPTION";
+	
+	private IRepositoryQuery query;
 
 	public CaseQueryWizard(TaskRepository repository, IRepositoryQuery query) {
 		super(repository);
-		addPage(new CaseQueryPage(QUERY_PAGE_DESCRIPTION, repository, query));
+		this.query = query;
 	}
+    public void addPages() {
+		addPage(new CaseQueryPage(QUERY_PAGE_DESCRIPTION, getTaskRepository(), query));
+    }
 
 }

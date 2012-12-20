@@ -8,6 +8,7 @@ import org.eclipse.mylyn.tasks.core.data.TaskAttributeMapper;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
 
 import com.redhat.gss.strata.model.Attachment;
+import com.redhat.gss.waigatahu.cases.data.CaseAttribute;
 
 public class CaseAttachmentMapper extends TaskAttachmentMapper {
 	public static CaseAttachmentMapper createFrom(TaskRepository repository, Attachment a) {

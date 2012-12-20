@@ -4,8 +4,6 @@ import org.eclipse.mylyn.tasks.core.ITask;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskMapper;
 
-import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
-
 // Maps TaskData to ITasks
 public class CaseTaskMapper extends TaskMapper {
 	private final CaseRepositoryConnector connector;

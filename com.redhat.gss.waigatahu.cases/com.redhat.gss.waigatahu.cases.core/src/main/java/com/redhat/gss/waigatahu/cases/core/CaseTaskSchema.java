@@ -3,6 +3,8 @@ package com.redhat.gss.waigatahu.cases.core;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskSchema;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
 
+import com.redhat.gss.waigatahu.cases.data.CaseAttribute;
+
 public final class CaseTaskSchema extends AbstractTaskSchema {
 	private static final CaseTaskSchema instance = new CaseTaskSchema();
 

@@ -1,4 +1,4 @@
-package com.redhat.gss.waigatahu.cases.core;
+package com.redhat.gss.waigatahu.cases.data;
 
 public interface CaseAttribute {
 	String CLOSED = "task.com.redhat.gss.case.closed";

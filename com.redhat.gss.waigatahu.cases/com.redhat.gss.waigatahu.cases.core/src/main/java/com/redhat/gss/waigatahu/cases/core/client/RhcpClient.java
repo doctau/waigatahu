@@ -25,7 +25,7 @@ public interface RhcpClient {
 	Case createCase(Case supportCase, IProgressMonitor monitor);
 	
 	//queries
-	Collection<Case> getAllOpenCases(RhcpClient client, IProgressMonitor monitor);
+	Collection<Case> queryCases(CaseQuery query, IProgressMonitor monitor);
 	
 	//attachments
 	InputStream streamAttachment(CaseId caseId, String attachmentId,

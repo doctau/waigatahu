@@ -4,6 +4,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.URLEncoder;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -23,6 +26,7 @@ import org.apache.commons.httpclient.Credentials;
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HostConfiguration;
 import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.auth.AuthScope;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.methods.ByteArrayRequestEntity;
@@ -31,6 +35,7 @@ import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.PutMethod;
 import org.apache.commons.httpclient.methods.RequestEntity;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.mylyn.commons.net.AbstractWebLocation;
 import org.eclipse.mylyn.commons.net.AuthenticationCredentials;
 import org.eclipse.mylyn.commons.net.AuthenticationType;
@@ -46,6 +51,10 @@ import com.redhat.gss.strata.model.Attachments;
 import com.redhat.gss.strata.model.Case;
 import com.redhat.gss.strata.model.Cases;
 import com.redhat.gss.strata.model.Product;
+import com.redhat.gss.strata.model.Products;
+import com.redhat.gss.strata.model.Values;
+import com.redhat.gss.strata.model.Values.Value;
+import com.redhat.gss.strata.model.Versions;
 import com.redhat.gss.waigatahu.cases.core.CaseId;
 import com.redhat.gss.waigatahu.cases.util.WebDownloadInputStream;
 
@@ -58,6 +67,16 @@ public class RhcpClientImpl implements RhcpClient {
 
 	private static final Header ACCEPT_XML_HEADER = new Header("Accept", "application/xml");
 	private static final Header CONTENT_TYPE_XML_HEADER = new Header("Content-Type", "application/xml");
+	
+	private static final Class<?>[] XML_CLASSES = new Class[] {
+		Account.class,
+		Case.class,
+		Cases.class,
+		Product.class,
+		Products.class,
+		Values.class,
+		Versions.class
+	};
 
 	private final TaskRepository repository;
 	private final JAXBContext jaxbContext;
@@ -73,7 +92,7 @@ public class RhcpClientImpl implements RhcpClient {
 		this.repository = repository;
 
 		try {
-			this.jaxbContext = JAXBContext.newInstance(Cases.class, Case.class);
+			this.jaxbContext = JAXBContext.newInstance(XML_CLASSES);
 		} catch (JAXBException e) {
 			throw new RuntimeException(e);
 		}
@@ -121,7 +140,7 @@ public class RhcpClientImpl implements RhcpClient {
 			switch (status) {
 			case HttpURLConnection.HTTP_UNAUTHORIZED:
 			case HttpURLConnection.HTTP_FORBIDDEN:
-				throw new RuntimeException("authorisation failed");
+				throw new LoginException();
 			default:
 				okay = true;
 				return method;
@@ -159,7 +178,7 @@ public class RhcpClientImpl implements RhcpClient {
 			switch (status) {
 			case HttpURLConnection.HTTP_UNAUTHORIZED:
 			case HttpURLConnection.HTTP_FORBIDDEN:
-				throw new RuntimeException("authorisation failed");
+				throw new LoginException();
 			default:
 				okay = true;
 				return method;
@@ -197,7 +216,7 @@ public class RhcpClientImpl implements RhcpClient {
 			switch (status) {
 			case HttpURLConnection.HTTP_UNAUTHORIZED:
 			case HttpURLConnection.HTTP_FORBIDDEN:
-				throw new RuntimeException("authorisation failed");
+				throw new LoginException();
 			default:
 				okay = true;
 				return method;
@@ -236,9 +255,43 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public Collection<Case> getAllOpenCases(RhcpClient client,
-			IProgressMonitor monitor) {
-		GetMethod method = runGetRequestPath(ALL_OPEN_CASES_PATH, monitor);
+	public Collection<Case> queryCases(CaseQuery query, IProgressMonitor monitor) {
+		GetMethod gm = new GetMethod(ALL_OPEN_CASES_PATH);
+		List<NameValuePair> queryParams = new ArrayList<NameValuePair>();
+
+		// FIXME: not current supported according to DOC-43310
+		if (query.getClosed() == null) {
+			
+		} else if (query.getClosed()) {
+			throw new IllegalStateException("Query on open/closed is not supported yet");
+		} else {
+			throw new IllegalStateException("Query on open/closed is not supported yet");
+		}
+		
+		if (query.getCaseGroup() != null) {
+			queryParams.add(new NameValuePair("group", query.getCaseGroup()));
+		}
+		if (query.getSearchTerms() != null) {
+			queryParams.add(new NameValuePair("query", query.getCaseGroup()));
+		}
+
+		//FIXME: support date and time?
+		if (query.getStartDate() != null) {
+			final DateFormat df;
+			if (query.isQueryUseTime())
+				df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'");
+			else
+				df = new SimpleDateFormat("yyyy-MM-dd");
+			queryParams.add(new NameValuePair("startDate", df.format(query.getStartDate())));
+		}
+		
+		if (query.getEndDate() != null) {
+			DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+			queryParams.add(new NameValuePair("startDate", df.format(query.getEndDate())));
+		}
+		
+		gm.setQueryString((NameValuePair[]) queryParams.toArray(new NameValuePair[0]));
+		GetMethod method = runGetRequestPath(gm.getPath(), monitor);
 		try {
 			switch (method.getStatusCode()) {
 			case HttpURLConnection.HTTP_OK:
@@ -392,21 +445,33 @@ public class RhcpClientImpl implements RhcpClient {
 			versions.clear();
 		}
 	}
-
+	
 	public List<Product> getProducts() {
 		synchronized (this) {
 			if (products == null) {
-				RunnableFuture<List<Product>> rf =  new FutureTask<List<Product>>(new Callable<List<Product>>() {
+				RunnableFuture<List<Product>> rf = new FutureTask<List<Product>>(new Callable<List<Product>>() {
 					public List<Product> call() throws Exception {
-						List<Product> ps = new ArrayList<Product>();
-						
-						//FIXME: talk to the API
-						Product p = new Product();
-						p.setCode("FIXME");
-						p.setName("FIXME");
-						ps.add(p);
-						
-						return ps;
+						IProgressMonitor monitor = new NullProgressMonitor();
+						GetMethod method = runGetRequestPath("/products", monitor);
+						try {
+							switch (method.getStatusCode()) {
+							case HttpURLConnection.HTTP_OK:
+								try {
+									InputStream is = method.getResponseBodyAsStream();
+								    Unmarshaller um = jaxbContext.createUnmarshaller();
+								    Products products = (Products) um.unmarshal(is);
+								    return products.getProduct();
+								} catch (IOException e) {
+									throw new RuntimeException(e);
+								} catch (JAXBException e) {
+									throw new RuntimeException(e);
+								}
+							default:
+								throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+							}
+						} finally {
+							WebUtil.releaseConnection(method, monitor);
+						}
 					}
 				});
 				products = rf;
@@ -426,12 +491,28 @@ public class RhcpClientImpl implements RhcpClient {
 	public List<String> getVersions(final String product) {
 		RunnableFuture<List<String>> nf = new FutureTask<List<String>>(new Callable<List<String>>() {
 			public List<String> call() throws Exception {
-				List<String> ps = new ArrayList<String>();
-				
-				//FIXME: talk to the API
-				ps.add("FIXME");
-
-				return ps;
+				IProgressMonitor monitor = new NullProgressMonitor();
+				String escProduct = product.replace(" ", "%20"); // FIXME this sucks, but URLEncoder turns spaces into +s
+				GetMethod method = runGetRequestPath("/products/" + escProduct + "/versions", monitor);
+				try {
+					switch (method.getStatusCode()) {
+					case HttpURLConnection.HTTP_OK:
+						try {
+							InputStream is = method.getResponseBodyAsStream();
+						    Unmarshaller um = jaxbContext.createUnmarshaller();
+						    Versions versions = (Versions) um.unmarshal(is);
+						    return versions.getVersion();
+						} catch (IOException e) {
+							throw new RuntimeException(e);
+						} catch (JAXBException e) {
+							throw new RuntimeException(e);
+						}
+					default:
+						throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+					}
+				} finally {
+					WebUtil.releaseConnection(method, monitor);
+				}
 			}
 		});
 		Future<List<String>> f = versions.putIfAbsent(product, nf);
@@ -454,15 +535,32 @@ public class RhcpClientImpl implements RhcpClient {
 			if (types == null) {
 				RunnableFuture<List<String>> rf =  new FutureTask<List<String>>(new Callable<List<String>>() {
 					public List<String> call() throws Exception {
-						List<String> ps = new ArrayList<String>();
-						
-						//FIXME: talk to the API?
-						ps.add("Bug");
-						ps.add("Feature");
-						ps.add("Info");
-						ps.add("Other");
-						
-						return ps;
+						IProgressMonitor monitor = new NullProgressMonitor();
+						GetMethod method = runGetRequestPath("/values/case/types", monitor);
+						try {
+							switch (method.getStatusCode()) {
+							case HttpURLConnection.HTTP_OK:
+								try {
+									InputStream is = method.getResponseBodyAsStream();
+								    Unmarshaller um = jaxbContext.createUnmarshaller();
+								    Values values = (Values) um.unmarshal(is);
+								    
+								    List<String> vs = new ArrayList<String>();
+								    for (Value v: values.getValue()) {
+								    	vs.add(v.getName());
+								    }
+								    return vs;
+								} catch (IOException e) {
+									throw new RuntimeException(e);
+								} catch (JAXBException e) {
+									throw new RuntimeException(e);
+								}
+							default:
+								throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+							}
+						} finally {
+							WebUtil.releaseConnection(method, monitor);
+						}
 					}
 				});
 				types = rf;
@@ -484,15 +582,32 @@ public class RhcpClientImpl implements RhcpClient {
 			if (severities == null) {
 				RunnableFuture<List<String>> rf =  new FutureTask<List<String>>(new Callable<List<String>>() {
 					public List<String> call() throws Exception {
-						List<String> ps = new ArrayList<String>();
-
-						//FIXME: talk to the API?
-						ps.add("4 (Low)");
-						ps.add("3 (Normal)");
-						ps.add("2 (High)");
-						ps.add("1 (Urgent)");
-
-						return ps;
+						IProgressMonitor monitor = new NullProgressMonitor();
+						GetMethod method = runGetRequestPath("/values/case/severity", monitor);
+						try {
+							switch (method.getStatusCode()) {
+							case HttpURLConnection.HTTP_OK:
+								try {
+									InputStream is = method.getResponseBodyAsStream();
+								    Unmarshaller um = jaxbContext.createUnmarshaller();
+								    Values values = (Values) um.unmarshal(is);
+								    
+								    List<String> vs = new ArrayList<String>();
+								    for (Value v: values.getValue()) {
+								    	vs.add(v.getName());
+								    }
+								    return vs;
+								} catch (IOException e) {
+									throw new RuntimeException(e);
+								} catch (JAXBException e) {
+									throw new RuntimeException(e);
+								}
+							default:
+								throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+							}
+						} finally {
+							WebUtil.releaseConnection(method, monitor);
+						}
 					}
 				});
 				severities = rf;
@@ -514,14 +629,32 @@ public class RhcpClientImpl implements RhcpClient {
 			if (statuses == null) {
 				RunnableFuture<List<String>> rf =  new FutureTask<List<String>>(new Callable<List<String>>() {
 					public List<String> call() throws Exception {
-						List<String> ps = new ArrayList<String>();
-						
-						//FIXME: talk to the API?
-						ps.add("Waiting on Red Hat");
-						ps.add("Waiting on Customer");
-						ps.add("Closed");
-						
-						return ps;
+						IProgressMonitor monitor = new NullProgressMonitor();
+						GetMethod method = runGetRequestPath("/values/case/status", monitor);
+						try {
+							switch (method.getStatusCode()) {
+							case HttpURLConnection.HTTP_OK:
+								try {
+									InputStream is = method.getResponseBodyAsStream();
+								    Unmarshaller um = jaxbContext.createUnmarshaller();
+								    Values values = (Values) um.unmarshal(is);
+								    
+								    List<String> vs = new ArrayList<String>();
+								    for (Value v: values.getValue()) {
+								    	vs.add(v.getName());
+								    }
+								    return vs;
+								} catch (IOException e) {
+									throw new RuntimeException(e);
+								} catch (JAXBException e) {
+									throw new RuntimeException(e);
+								}
+							default:
+								throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+							}
+						} finally {
+							WebUtil.releaseConnection(method, monitor);
+						}
 					}
 				});
 				statuses = rf;

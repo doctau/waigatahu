@@ -12,7 +12,6 @@ import org.eclipse.mylyn.tasks.ui.wizards.NewTaskWizard;
 
 import com.redhat.gss.waigatahu.cases.core.CaseRepositoryConnector;
 import com.redhat.gss.waigatahu.cases.core.WaigatahuCaseCorePlugin;
-import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactory;
 import com.redhat.gss.waigatahu.cases.ui.attachment.CaseAttachmentPage;
 
 public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {

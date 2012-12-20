@@ -20,7 +20,6 @@ import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITaskMapping;
 import org.eclipse.mylyn.tasks.core.RepositoryResponse;
 import org.eclipse.mylyn.tasks.core.RepositoryResponse.ResponseKind;
-import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskDataHandler;
 import org.eclipse.mylyn.tasks.core.data.TaskAttachmentMapper;
@@ -35,7 +34,10 @@ import com.redhat.gss.strata.model.Attachment;
 import com.redhat.gss.strata.model.Case;
 import com.redhat.gss.strata.model.Comment;
 import com.redhat.gss.strata.model.Product;
+import com.redhat.gss.waigatahu.cases.core.client.CaseQuery;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
+import com.redhat.gss.waigatahu.cases.data.CaseAttribute;
+import com.redhat.gss.waigatahu.cases.data.QueryAttribute;
 
 public class CaseDataHandler extends AbstractTaskDataHandler {
 	private final String TASK_DATA_VERSION = "1";
@@ -127,11 +129,15 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		try {
 			myMonitor.beginTask("Running query", IProgressMonitor.UNKNOWN);
 			RhcpClient client = connector.getClient(repository);
-
-			Collection<Case> cases;
-
-			//TODO: check the query type
-			cases = client.getAllOpenCases(client, monitor);
+			
+			CaseQuery cquery = new CaseQuery();
+			cquery.setClosed(query.getAttribute(QueryAttribute.CLOSED));
+			cquery.setCaseGroup(query.getAttribute(QueryAttribute.CASE_GROUP));
+			cquery.setSearchTerms(query.getAttribute(QueryAttribute.SEARCH_TERMS));
+			//FIXME: parse the string// cquery.setStartDate(query.getAttribute(QueryAttribute.START_DATE));
+			//cquery.setEndDate(query.getAttribute(QueryAttribute.END_DATE));
+			cquery.setQueryUseTime(Boolean.parseBoolean(query.getAttribute(QueryAttribute.QUERY_USE_TIME)));
+			Collection<Case> cases = client.queryCases(cquery, monitor);
 
 			for (Case c: cases) {
 				String taskId = connector.getTaskIdFromTaskUrl(c.getUri());
