@@ -1,3 +1,2 @@
 Before you build using either maven or Eclipse, you need to do:
-	cd com.redhat.gss.waigatahu.cases/com.redhat.gss.waigatahu.cases.core
-	mvn org.apache.cxf:cxf-xjc-plugin:xsdtojava
+	mvn generate-sources
