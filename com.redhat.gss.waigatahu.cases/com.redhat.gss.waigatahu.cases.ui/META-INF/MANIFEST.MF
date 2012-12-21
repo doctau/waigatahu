@@ -7,7 +7,8 @@ Bundle-Activator: com.redhat.gss.waigatahu.cases.ui.Activator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  com.redhat.gss.waigatahu.cases.core;bundle-version="0.0.1",
- org.eclipse.mylyn.tasks.core
+ org.eclipse.mylyn.tasks.core,
+ org.eclipse.mylyn.tasks.ui
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Import-Package: org.eclipse.mylyn.commons.core,
@@ -18,4 +19,6 @@ Import-Package: org.eclipse.mylyn.commons.core,
  org.eclipse.mylyn.tasks.ui,
  org.eclipse.mylyn.tasks.ui.editors,
  org.eclipse.mylyn.tasks.ui.wizards,
- org.eclipse.ui.forms.editor
+ org.eclipse.ui.forms,
+ org.eclipse.ui.forms.editor,
+ org.eclipse.ui.forms.events

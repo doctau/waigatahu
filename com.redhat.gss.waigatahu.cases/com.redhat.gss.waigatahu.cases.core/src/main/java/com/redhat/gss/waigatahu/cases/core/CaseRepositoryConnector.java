@@ -35,6 +35,15 @@ public class CaseRepositoryConnector extends AbstractRepositoryConnector impleme
 		return WaigatahuCaseCorePlugin.CONNECTOR_KIND;
 	}
 
+	public void shutdown() {
+		synchronized (this) {
+			for (RhcpClient c: clients.values()) {
+				c.shutdown();
+			}
+			clients.clear();
+		}
+	}
+
 	public boolean canCreateTaskFromKey(TaskRepository repository) {
 		return true;
 	}

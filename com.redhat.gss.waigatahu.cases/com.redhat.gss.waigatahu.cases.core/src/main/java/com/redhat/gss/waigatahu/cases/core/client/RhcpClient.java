@@ -14,6 +14,8 @@ import com.redhat.gss.strata.model.Product;
 import com.redhat.gss.waigatahu.cases.core.CaseId;
 
 public interface RhcpClient {
+	void shutdown();
+
 	//cases
 	void validateConnection(IProgressMonitor monitor);
 	boolean canCreateCases();

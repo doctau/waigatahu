@@ -95,6 +95,8 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		RhcpClient client = connector.getClient(repository);
 		taskData.setVersion(TASK_DATA_VERSION);
 		createDefaultAttributes(taskData, client);
+		
+		// FIXME: hide Status etc for now
 		return true;
 	}
 
@@ -353,13 +355,28 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 		Case supportCase = new Case();
 		TaskAttribute keyAttr = root.getAttribute(TaskAttribute.TASK_KEY);
-		if (keyAttr != null)
+		if (!keyAttr.getValues().isEmpty())
 			supportCase.setCaseNumber(keyAttr.getValue());
-		supportCase.setSummary(root.getAttribute(TaskAttribute.SUMMARY).getValue());
+		
+		String summary = root.getAttribute(TaskAttribute.SUMMARY).getValue();
+		if (summary.isEmpty())
+			throw new CoreException(new Status(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, "Summary is missing"));
+		supportCase.setSummary(summary);
+		
+		String description = root.getAttribute(TaskAttribute.DESCRIPTION).getValue();
+		if (description.isEmpty())
+			throw new CoreException(new Status(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, "Description is missing"));
+		supportCase.setDescription(description);
+
 		supportCase.setStatus(root.getAttribute(TaskAttribute.STATUS).getValue());
+		//FIXME: are these required?
 		supportCase.setSeverity(root.getAttribute(TaskAttribute.SEVERITY).getValue());
 		supportCase.setProduct(root.getAttribute(TaskAttribute.PRODUCT).getValue());
-		supportCase.setVersion(root.getAttribute(TaskAttribute.VERSION).getValue());
+		
+		String version = root.getAttribute(TaskAttribute.VERSION).getValue();
+		if (version.isEmpty())
+			throw new CoreException(new Status(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, "Version is missing"));
+		supportCase.setVersion(version);
 
 		// root.getAttribute(TaskAttribute.USER_REPORTER).setValue(supportCase.getContactName());
 		return supportCase;

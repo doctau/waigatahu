@@ -98,6 +98,11 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
+	public void shutdown() {
+		//FIXME: do anything here?
+	}
+	
+
 	protected HttpClient createHttpClient() {
 		HttpClient httpClient = new HttpClient();
 		httpClient.setHttpConnectionManager(WebUtil.getConnectionManager());
@@ -421,7 +426,11 @@ public class RhcpClientImpl implements RhcpClient {
 				//FIXME: don't parse and un-parse the number from the URL
 				return getCase(new CaseId(location), monitor);
 			case HttpURLConnection.HTTP_NOT_ACCEPTABLE:
-				throw new RuntimeException("Case data is not valid");
+				String err = "unknown";
+				try {
+					err = method.getResponseBodyAsString();
+				} catch (IOException e) {}
+				throw new RuntimeException("Case not accepted by server: " + err);
 			default:
 				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 			}

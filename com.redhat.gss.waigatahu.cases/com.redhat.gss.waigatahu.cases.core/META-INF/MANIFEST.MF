@@ -13,6 +13,7 @@ Import-Package: com.redhat.gss.strata.model,
  org.eclipse.mylyn.commons.core,
  org.eclipse.mylyn.commons.net,
  org.eclipse.mylyn.internal.commons.net,
+ org.eclipse.mylyn.internal.commons.net.http,
  org.eclipse.mylyn.tasks.core,
  org.eclipse.mylyn.tasks.core.data,
  org.eclipse.mylyn.tasks.core.sync

@@ -24,7 +24,7 @@
          point="org.eclipse.mylyn.tasks.ui.editors">
       <pageFactory
             class="com.redhat.gss.waigatahu.cases.ui.editor.CaseEditorPageFactory"
-            id="org.eclipse.mylyn.trac.ui.pageFactory">
+            id="com.redhat.gss.waigatahu.cases.ui.pageFactory">
       </pageFactory>
    </extension>
 </plugin>
