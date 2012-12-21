@@ -1,5 +1,6 @@
 package com.redhat.gss.waigatahu.cases.ui.editor;
 
+import org.eclipse.mylyn.internal.tasks.core.ITasksCoreConstants;
 import org.eclipse.mylyn.tasks.ui.editors.AbstractTaskEditorPageFactory;
 import org.eclipse.mylyn.tasks.ui.editors.TaskEditor;
 import org.eclipse.mylyn.tasks.ui.editors.TaskEditorInput;
@@ -13,6 +14,8 @@ public class CaseEditorPageFactory extends AbstractTaskEditorPageFactory {
 	
 	public boolean canCreatePageFor(TaskEditorInput input) {
 		if (input.getTask().getConnectorKind().equals(WaigatahuCaseCorePlugin.CONNECTOR_KIND)) {
+			return true;
+		} else if (input.getTask().getAttribute(ITasksCoreConstants.ATTRIBUTE_OUTGOING_NEW_CONNECTOR_KIND).equals(WaigatahuCaseCorePlugin.CONNECTOR_KIND)) {
 			return true;
 		} else {
 			return false;
