@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -34,6 +33,12 @@ import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.PutMethod;
 import org.apache.commons.httpclient.methods.RequestEntity;
+import org.apache.commons.httpclient.methods.multipart.FilePart;
+import org.apache.commons.httpclient.methods.multipart.MultipartRequestEntity;
+import org.apache.commons.httpclient.methods.multipart.Part;
+import org.apache.commons.httpclient.methods.multipart.PartSource;
+import org.apache.commons.httpclient.params.HttpMethodParams;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.mylyn.commons.net.AbstractWebLocation;
@@ -43,6 +48,7 @@ import org.eclipse.mylyn.commons.net.WebUtil;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskAttachmentSource;
+import org.eclipse.mylyn.tasks.core.data.TaskAttachmentPartSource;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
 
 import com.redhat.gss.strata.model.Account;
@@ -59,6 +65,33 @@ import com.redhat.gss.waigatahu.cases.core.CaseId;
 import com.redhat.gss.waigatahu.cases.util.WebDownloadInputStream;
 
 public class RhcpClientImpl implements RhcpClient {
+	private static class AttachmentPartSource implements PartSource {
+		private final AbstractTaskAttachmentSource source;
+		private final IProgressMonitor monitor;
+
+		private AttachmentPartSource(AbstractTaskAttachmentSource source,
+				IProgressMonitor monitor) {
+			this.source = source;
+			this.monitor = monitor;
+		}
+
+		public long getLength() {
+			return source.getLength();
+		}
+
+		public String getFileName() {
+			return source.getName();
+		}
+
+		public InputStream createInputStream() throws IOException {
+			try {
+				return source.createInputStream(monitor);
+			} catch (CoreException e) {
+				throw new IOException("Could not create stream");
+			}
+		}
+	}
+
 	private static final String USER_AGENT = "Waigatahu 0.0.1";
 	private static final String VALIDATE_PATH = "/accounts/defaultAccount";
 	private static final String ALL_OPEN_CASES_PATH = "/cases/";
@@ -197,22 +230,23 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public PostMethod runPostRequestPath(String restPath, IProgressMonitor monitor, RequestEntity re) {
+	public PostMethod runPostRequestPath(String restPath, IProgressMonitor monitor, RequestEntity re, boolean contentTypeXml) {
 		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
-		return runPostRequestInternal(location.getUrl() + restPath, location, monitor, re);
+		return runPostRequestInternal(location.getUrl() + restPath, location, monitor, re, contentTypeXml);
 	}
-	public PostMethod runPostRequestUrl(String url, IProgressMonitor monitor, RequestEntity re) {
+	public PostMethod runPostRequestUrl(String url, IProgressMonitor monitor, RequestEntity re, boolean contentTypeXml) {
 		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
-		return runPostRequestInternal(url, location, monitor, re);
+		return runPostRequestInternal(url, location, monitor, re, contentTypeXml);
 	}
-	private PostMethod runPostRequestInternal(String url, AbstractWebLocation location, IProgressMonitor monitor, RequestEntity re) {
+	private PostMethod runPostRequestInternal(String url, AbstractWebLocation location, IProgressMonitor monitor, RequestEntity re, boolean contentTypeXml) {
 		HttpClient httpClient = createHttpClient();
 		setupClientAuthentication(httpClient, location, monitor);
 
 		HostConfiguration hostConfiguration = WebUtil.createHostConfiguration(httpClient, location, monitor);
 		PostMethod method = new PostMethod(WebUtil.getRequestPath(url));
 		method.addRequestHeader(ACCEPT_XML_HEADER);
-		method.addRequestHeader(CONTENT_TYPE_XML_HEADER);
+		if (contentTypeXml)
+			method.addRequestHeader(CONTENT_TYPE_XML_HEADER);
 		method.setRequestEntity(re);
 		boolean okay = false;
 		try {
@@ -385,10 +419,40 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public void postAttachment(CaseId caseId, String comment,
-			TaskAttribute attribute, AbstractTaskAttachmentSource source,
-			IProgressMonitor monitor) {
-		throw new IllegalArgumentException();
+	public void postAttachment(CaseId caseId, String comment, TaskAttribute attribute,
+			final AbstractTaskAttachmentSource source, final IProgressMonitor monitor) {
+		PostMethod method = null;
+		InputStream is = null;
+		try {
+			//FIXME: add content-type, description etc
+			HttpMethodParams params = new HttpMethodParams();
+
+			Part part = new FilePart("file", new AttachmentPartSource(source, monitor), source.getContentType(), null);
+			RequestEntity re = new MultipartRequestEntity(new Part[] { part }, params);
+			method = runPostRequestUrl(caseId.getUrl() + ALL_CASE_ATTACHMENTS, monitor, re, false);
+
+			switch (method.getStatusCode()) {
+			case HttpURLConnection.HTTP_CREATED:
+				// normal response
+				String  location = method.getResponseHeader("Location").getValue();
+				attribute.createAttribute(TaskAttribute.ATTACHMENT_URL).setValue(location);
+				break;
+			default:
+				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+			}
+		} finally {
+			if (method != null)
+				WebUtil.releaseConnection(method, monitor);
+			method = null;
+			
+			if (is != null) {
+				try {
+					is.close();
+				} catch (IOException e) {
+					//oh no!
+				}
+			}
+		}
 	}
 
 	public void updateCaseMetadata(CaseId caseId, Case supportCase, IProgressMonitor monitor) {
@@ -417,7 +481,7 @@ public class RhcpClientImpl implements RhcpClient {
 		try {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			jaxbContext.createMarshaller().marshal(supportCase, baos);
-			method = runPostRequestPath(CASE_CREATE_PATH, monitor, new ByteArrayRequestEntity(baos.toByteArray()));
+			method = runPostRequestPath(CASE_CREATE_PATH, monitor, new ByteArrayRequestEntity(baos.toByteArray()), true);
 
 			switch (method.getStatusCode()) {
 			case HttpURLConnection.HTTP_CREATED:
