@@ -16,7 +16,7 @@ import com.redhat.gss.waigatahu.cases.core.CaseId;
 public interface RhcpClient {
 	void shutdown();
 
-	//cases
+	//core
 	void validateConnection(IProgressMonitor monitor);
 	boolean canCreateCases();
 
@@ -34,6 +34,10 @@ public interface RhcpClient {
 			String url, IProgressMonitor monitor);
 	void postAttachment(CaseId caseId, String comment, TaskAttribute attribute,
 			AbstractTaskAttachmentSource source, IProgressMonitor monitor);
+
+
+	//comments
+	void postComment(CaseId caseId, String text, TaskAttribute attribute, IProgressMonitor monitor);
 
 
 	// field values

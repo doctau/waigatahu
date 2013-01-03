@@ -48,7 +48,6 @@ import org.eclipse.mylyn.commons.net.WebUtil;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskAttachmentSource;
-import org.eclipse.mylyn.tasks.core.data.TaskAttachmentPartSource;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
 
 import com.redhat.gss.strata.model.Account;
@@ -56,6 +55,7 @@ import com.redhat.gss.strata.model.Attachment;
 import com.redhat.gss.strata.model.Attachments;
 import com.redhat.gss.strata.model.Case;
 import com.redhat.gss.strata.model.Cases;
+import com.redhat.gss.strata.model.Comment;
 import com.redhat.gss.strata.model.Product;
 import com.redhat.gss.strata.model.Products;
 import com.redhat.gss.strata.model.Values;
@@ -97,6 +97,8 @@ public class RhcpClientImpl implements RhcpClient {
 	private static final String ALL_OPEN_CASES_PATH = "/cases/";
 	private static final String CASE_CREATE_PATH = "/cases";
 	private static final String ALL_CASE_ATTACHMENTS = "/attachments";
+	private static final String POST_CASE_ATTACHMENT = "/attachments";
+	private static final String POST_CASE_COMMENT = "/comments";
 
 	private static final Header ACCEPT_XML_HEADER = new Header("Accept", "application/xml");
 	private static final Header CONTENT_TYPE_XML_HEADER = new Header("Content-Type", "application/xml");
@@ -431,7 +433,7 @@ public class RhcpClientImpl implements RhcpClient {
 
 			Part part = new FilePart("file", new AttachmentPartSource(source, monitor), source.getContentType(), null);
 			RequestEntity re = new MultipartRequestEntity(new Part[] { part }, params);
-			method = runPostRequestUrl(caseId.getUrl() + ALL_CASE_ATTACHMENTS, monitor, re, false);
+			method = runPostRequestUrl(caseId.getUrl() + POST_CASE_ATTACHMENT, monitor, re, false);
 
 			switch (method.getStatusCode()) {
 			case HttpURLConnection.HTTP_CREATED:
@@ -442,6 +444,45 @@ public class RhcpClientImpl implements RhcpClient {
 			default:
 				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 			}
+		} finally {
+			if (method != null)
+				WebUtil.releaseConnection(method, monitor);
+			method = null;
+			
+			if (is != null) {
+				try {
+					is.close();
+				} catch (IOException e) {
+					//oh no!
+				}
+			}
+		}
+	}
+
+	public void postComment(CaseId caseId, String text, TaskAttribute attribute, IProgressMonitor monitor) {
+		PostMethod method = null;
+		InputStream is = null;
+		try {
+			Comment comment = new Comment();
+			comment.setText(text);
+			comment.setPublic(true);
+			comment.setDraft(false);
+
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			jaxbContext.createMarshaller().marshal(comment, baos);
+			method = runPostRequestUrl(caseId.getUrl() + POST_CASE_COMMENT, monitor, new ByteArrayRequestEntity(baos.toByteArray()), true);
+
+			switch (method.getStatusCode()) {
+			case HttpURLConnection.HTTP_CREATED:
+				// normal response
+				String  location = method.getResponseHeader("Location").getValue();
+				attribute.createAttribute(TaskAttribute.COMMENT_URL).setValue(location);
+				break;
+			default:
+				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+			}
+		} catch (JAXBException e) {
+			throw new RuntimeException(e);
 		} finally {
 			if (method != null)
 				WebUtil.releaseConnection(method, monitor);

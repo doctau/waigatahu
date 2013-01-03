@@ -71,13 +71,16 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			String uri = taskData.getRoot().getAttribute(CaseAttribute.CASE_URI).getValue();
 			client.updateCaseMetadata(new CaseId(uri), supportCase, monitor);
 
-			String newComment = taskData.getRoot().getAttribute(TaskAttribute.COMMENT_NEW).getValue();
-			if (newComment != null && !newComment.isEmpty()) {
+			TaskAttribute newComment = taskData.getRoot().getAttribute(TaskAttribute.COMMENT_NEW);
+			if (!newComment.getValue().isEmpty()) {
 				//FIXME: post comment
-				throw new IllegalStateException("not implemented");
+				CaseId caseId = connector.taskIdToCaseUrl(taskData.getTaskId());
+				client.postComment(caseId, newComment.getValue(), newComment, monitor);
 			}
 			
 			//FIXME: post attachments
+
+			//FIXME: update case metadata, especially if there was a new comment
 			return new RepositoryResponse(ResponseKind.TASK_UPDATED, taskData.getTaskId());
 		} catch (CoreException e) {
 			throw new RuntimeException(e);
