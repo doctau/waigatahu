@@ -4,6 +4,8 @@ public class CaseId {
 	private String url;
 	
 	public CaseId(String url) {
+		if (url == null)
+			throw new IllegalArgumentException();
 		this.url = url;
 	}
 

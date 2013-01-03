@@ -53,9 +53,13 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			IProgressMonitor monitor) throws CoreException {
 		RhcpClient client = connector.getClient(repository);
 		if (taskData.isNew()) {
-			return createCase(client, repository, taskData, monitor);
+			RepositoryResponse response = createCase(client, repository, taskData, monitor);
+			// show the status field
+			taskData.getRoot().getAttribute(TaskAttribute.STATUS).getMetaData().setKind(null);
+			return response;
 		} else {
-			return updateCase(client, repository, taskData, oldAttributes, monitor);
+			RepositoryResponse response = updateCase(client, repository, taskData, oldAttributes, monitor);
+			return response;
 		}
 	}
 
@@ -64,8 +68,14 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		try {
 			monitor.beginTask("Updating Case", IProgressMonitor.UNKNOWN);
 			Case supportCase = createCaseFromTaskData(repository, taskData, monitor);
-			client.updateCaseMetadata(new CaseId(supportCase.getUri()), supportCase, monitor);
-			
+			String uri = taskData.getRoot().getAttribute(CaseAttribute.CASE_URI).getValue();
+			client.updateCaseMetadata(new CaseId(uri), supportCase, monitor);
+
+			String newComment = taskData.getRoot().getAttribute(TaskAttribute.COMMENT_NEW).getValue();
+			if (newComment != null && !newComment.isEmpty()) {
+				//FIXME: post comment
+				throw new IllegalStateException("not implemented");
+			}
 			
 			//FIXME: post attachments
 			return new RepositoryResponse(ResponseKind.TASK_UPDATED, taskData.getTaskId());
@@ -82,7 +92,6 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			Case createdCase = client.createCase(tempCase, monitor);
 			updateTaskData(client, repository, taskData, createdCase);
 
-			//FIXME: post attachments
 			return new RepositoryResponse(ResponseKind.TASK_CREATED, taskData.getTaskId());
 		} catch (CoreException e) {
 			throw new RuntimeException(e);
@@ -95,8 +104,8 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		RhcpClient client = connector.getClient(repository);
 		taskData.setVersion(TASK_DATA_VERSION);
 		createDefaultAttributes(taskData, client);
+		taskData.getRoot().getAttribute(TaskAttribute.STATUS).getMetaData().setKind(null);
 		
-		// FIXME: hide Status etc for now
 		return true;
 	}
 
@@ -239,7 +248,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		for (String s: client.getStatuses()) {
 			attr.putOption(s, s);
 		}
-		
+
 		attr = addAttribute(taskData, TaskAttribute.SEVERITY, null,
 			TaskAttribute.TYPE_SINGLE_SELECT, "Severity",
 			true, readOnly);
@@ -260,30 +269,38 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 		addAttribute(taskData, TaskAttribute.DATE_CREATION, null,
 				TaskAttribute.TYPE_DATETIME, "Created at",
-				true, true);
+				false, true);
 		addAttribute(taskData, TaskAttribute.DATE_MODIFICATION, null,
 				TaskAttribute.TYPE_DATETIME, "Modified at",
-				true, true);
+				false, true);
 	
 		addAttribute(taskData, TaskAttribute.SUMMARY, null,
 				TaskAttribute.TYPE_SHORT_TEXT, "Summary",
-				true, readOnly);
+				false, readOnly);
 
 		addAttribute(taskData, TaskAttribute.USER_ASSIGNED, null,
 				TaskAttribute.TYPE_PERSON, "Owner",
-				true, true);
+				false, true);
 		addAttribute(taskData, TaskAttribute.USER_REPORTER, null,
 				TaskAttribute.TYPE_PERSON, "Contact",
-				true, true);
+				false, true);
 		addAttribute(taskData, CaseAttribute.CLOSED, null,
 				TaskAttribute.TYPE_BOOLEAN, "Closed",
 				false, true);
 		addAttribute(taskData, TaskAttribute.DESCRIPTION, null,
-				TaskAttribute.TYPE_LONG_TEXT, "Description",
-				true, readOnly);
+				TaskAttribute./*TYPE_LONG_TEXT*/TYPE_LONG_RICH_TEXT, "Description",
+				false, readOnly);
 		addAttribute(taskData, TaskAttribute.TASK_KEY, null,
 				TaskAttribute.TYPE_LONG, "Case number",
 				false, readOnly);
+
+		addAttribute(taskData, TaskAttribute.COMMENT_NEW, null,
+				TaskAttribute.TYPE_LONG_RICH_TEXT, "New comment",
+				false, readOnly);
+
+		addAttribute(taskData, CaseAttribute.CASE_URI, null,
+				TaskAttribute.TASK_URL, "RS URI",
+				false, true);
 	}
 
 	private void updateTaskData(RhcpClient client, TaskRepository repository, TaskData taskData, Case supportCase) {
@@ -291,6 +308,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 
 		root.getAttribute(TaskAttribute.TASK_KEY).setValue(supportCase.getCaseNumber());
+		root.getAttribute(CaseAttribute.CASE_URI).setValue(supportCase.getUri());
 		root.getAttribute(TaskAttribute.DATE_CREATION).setValue(supportCase.getCreatedDate().getTime().toString());
 		root.getAttribute(TaskAttribute.DATE_MODIFICATION).setValue(supportCase.getLastModifiedDate().getTime().toString());
 		root.getAttribute(TaskAttribute.SUMMARY).setValue(supportCase.getSummary());

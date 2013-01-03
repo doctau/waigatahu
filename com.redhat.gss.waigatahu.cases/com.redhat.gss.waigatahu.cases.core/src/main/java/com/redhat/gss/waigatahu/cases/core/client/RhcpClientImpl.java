@@ -201,6 +201,8 @@ public class RhcpClientImpl implements RhcpClient {
 		return runPutRequestInternal(url, location, monitor, re);
 	}
 	private PutMethod runPutRequestInternal(String url, AbstractWebLocation location, IProgressMonitor monitor, RequestEntity re) {
+		if (url == null)
+			throw new IllegalArgumentException("url is null");
 		HttpClient httpClient = createHttpClient();
 		setupClientAuthentication(httpClient, location, monitor);
 
@@ -465,6 +467,7 @@ public class RhcpClientImpl implements RhcpClient {
 			switch (method.getStatusCode()) {
 			case HttpURLConnection.HTTP_ACCEPTED:
 				// normal response
+				break;
 			default:
 				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 			}
@@ -490,14 +493,15 @@ public class RhcpClientImpl implements RhcpClient {
 				//FIXME: don't parse and un-parse the number from the URL
 				return getCase(new CaseId(location), monitor);
 			case HttpURLConnection.HTTP_NOT_ACCEPTABLE:
-				String err = "unknown";
+				String err1 = "unknown";
 				try {
-					err = method.getResponseBodyAsString();
+					err1 = method.getResponseBodyAsString();
 				} catch (IOException e) {}
-				throw new RuntimeException("Case not accepted by server: " + err);
+				throw new RuntimeException("Case not accepted by server: " + err1);
 			default:
+				String err2;
 				try {
-					err = method.getResponseBodyAsString();
+					err2 = method.getResponseBodyAsString();
 				} catch (IOException e) {}
 				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 			}
