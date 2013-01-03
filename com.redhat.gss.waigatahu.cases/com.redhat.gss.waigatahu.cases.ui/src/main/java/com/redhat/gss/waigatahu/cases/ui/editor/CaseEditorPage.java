@@ -63,7 +63,8 @@ public class CaseEditorPage extends AbstractTaskEditorPage {
 			for (String v: client.getVersions(changedAttr.getValue())) {
 				versionAttr.putOption(v, v);
 			}
-			//FIXME: update the UI field somehow?
+			//update the UI field
+			getModel().attributeChanged(versionAttr);
 		}
 	}
 
@@ -95,6 +96,14 @@ public class CaseEditorPage extends AbstractTaskEditorPage {
 		
 		if (root.getAttribute(TaskAttribute.DESCRIPTION).getValue().isEmpty())
 			invalid.add(root.getAttribute(TaskAttribute.DESCRIPTION));
+		
+		if (root.getAttribute(TaskAttribute.SUMMARY).getValue().isEmpty())
+			invalid.add(root.getAttribute(TaskAttribute.SUMMARY));
+		
+		if (root.getAttribute(TaskAttribute.PRODUCT).getValue().isEmpty())
+			invalid.add(root.getAttribute(TaskAttribute.PRODUCT));
+		else if (root.getAttribute(TaskAttribute.VERSION).getValue().isEmpty())
+			invalid.add(root.getAttribute(TaskAttribute.VERSION));
 		
 		return invalid;
 	}

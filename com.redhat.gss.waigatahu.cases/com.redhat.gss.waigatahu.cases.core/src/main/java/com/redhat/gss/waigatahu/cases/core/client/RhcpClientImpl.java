@@ -496,6 +496,9 @@ public class RhcpClientImpl implements RhcpClient {
 				} catch (IOException e) {}
 				throw new RuntimeException("Case not accepted by server: " + err);
 			default:
+				try {
+					err = method.getResponseBodyAsString();
+				} catch (IOException e) {}
 				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 			}
 		} catch (JAXBException e) {
