@@ -56,8 +56,12 @@ import com.redhat.gss.strata.model.Attachments;
 import com.redhat.gss.strata.model.Case;
 import com.redhat.gss.strata.model.Cases;
 import com.redhat.gss.strata.model.Comment;
+import com.redhat.gss.strata.model.Group;
+import com.redhat.gss.strata.model.Groups;
 import com.redhat.gss.strata.model.Product;
 import com.redhat.gss.strata.model.Products;
+import com.redhat.gss.strata.model.User;
+import com.redhat.gss.strata.model.Users;
 import com.redhat.gss.strata.model.Values;
 import com.redhat.gss.strata.model.Values.Value;
 import com.redhat.gss.strata.model.Versions;
@@ -65,6 +69,7 @@ import com.redhat.gss.waigatahu.cases.core.CaseId;
 import com.redhat.gss.waigatahu.cases.util.WebDownloadInputStream;
 
 public class RhcpClientImpl implements RhcpClient {
+
 	private static class AttachmentPartSource implements PartSource {
 		private final AbstractTaskAttachmentSource source;
 		private final IProgressMonitor monitor;
@@ -95,10 +100,17 @@ public class RhcpClientImpl implements RhcpClient {
 	private static final String USER_AGENT = "Waigatahu 0.0.1";
 	private static final String VALIDATE_PATH = "/accounts/defaultAccount";
 	private static final String ALL_OPEN_CASES_PATH = "/cases/";
-	private static final String CASE_CREATE_PATH = "/cases";
+	private static final String POST_CASE = "/cases";
 	private static final String ALL_CASE_ATTACHMENTS = "/attachments";
 	private static final String POST_CASE_ATTACHMENT = "/attachments";
 	private static final String POST_CASE_COMMENT = "/comments";
+	private static final String VALUES_PRODUCTS = "/products";
+	private static final String VALUES_GROUPS = "/groups";
+	private static final String VALUES_STATUSES = "/values/case/status";
+	private static final String VALUES_SEVERITIES = "/values/case/severity";
+	private static final String VALUES_CASE_TYPES = "/values/case/types";
+	private static final String ACCOUNT_USERS_SUFFIX = "/users";
+	private static final String ACCOUNT_USERS_PREFIX = "/account/";
 
 	private static final Header ACCEPT_XML_HEADER = new Header("Accept", "application/xml");
 	private static final Header CONTENT_TYPE_XML_HEADER = new Header("Content-Type", "application/xml");
@@ -122,6 +134,8 @@ public class RhcpClientImpl implements RhcpClient {
 	Future<List<String>> types = null;
 	Future<List<String>> severities = null;
 	Future<List<String>> statuses = null;
+	Future<List<Group>> groups = null;
+	ConcurrentMap<String, Future<List<User>>> users = new ConcurrentHashMap<String, Future<List<User>>>();
 
 	public RhcpClientImpl(TaskRepository repository) {
 		this.repository = repository;
@@ -525,7 +539,7 @@ public class RhcpClientImpl implements RhcpClient {
 		try {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			jaxbContext.createMarshaller().marshal(supportCase, baos);
-			method = runPostRequestPath(CASE_CREATE_PATH, monitor, new ByteArrayRequestEntity(baos.toByteArray()), true);
+			method = runPostRequestPath(POST_CASE, monitor, new ByteArrayRequestEntity(baos.toByteArray()), true);
 
 			switch (method.getStatusCode()) {
 			case HttpURLConnection.HTTP_CREATED:
@@ -563,7 +577,9 @@ public class RhcpClientImpl implements RhcpClient {
 			types = null;
 			severities = null;
 			statuses = null;
+			groups = null;
 			versions.clear();
+			users.clear();
 		}
 	}
 	
@@ -573,7 +589,7 @@ public class RhcpClientImpl implements RhcpClient {
 				RunnableFuture<List<Product>> rf = new FutureTask<List<Product>>(new Callable<List<Product>>() {
 					public List<Product> call() throws Exception {
 						IProgressMonitor monitor = new NullProgressMonitor();
-						GetMethod method = runGetRequestPath("/products", monitor);
+						GetMethod method = runGetRequestPath(VALUES_PRODUCTS, monitor);
 						try {
 							switch (method.getStatusCode()) {
 							case HttpURLConnection.HTTP_OK:
@@ -602,6 +618,48 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 		try {
 			return products.get();
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
+		} catch (ExecutionException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public List<Group> getGroups() {
+		synchronized (this) {
+			if (groups == null) {
+				RunnableFuture<List<Group>> rf = new FutureTask<List<Group>>(new Callable<List<Group>>() {
+					public List<Group> call() throws Exception {
+						IProgressMonitor monitor = new NullProgressMonitor();
+						GetMethod method = runGetRequestPath(VALUES_GROUPS, monitor);
+						try {
+							switch (method.getStatusCode()) {
+							case HttpURLConnection.HTTP_OK:
+								try {
+									InputStream is = method.getResponseBodyAsStream();
+								    Unmarshaller um = jaxbContext.createUnmarshaller();
+								    Groups products = (Groups) um.unmarshal(is);
+								    return products.getGroup();
+								} catch (IOException e) {
+									throw new RuntimeException(e);
+								} catch (JAXBException e) {
+									throw new RuntimeException(e);
+								}
+							default:
+								throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+							}
+						} finally {
+							WebUtil.releaseConnection(method, monitor);
+						}
+					}
+				});
+				groups = rf;
+
+				rf.run();
+			}
+		}
+		try {
+			return groups.get();
 		} catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		} catch (ExecutionException e) {
@@ -657,7 +715,7 @@ public class RhcpClientImpl implements RhcpClient {
 				RunnableFuture<List<String>> rf =  new FutureTask<List<String>>(new Callable<List<String>>() {
 					public List<String> call() throws Exception {
 						IProgressMonitor monitor = new NullProgressMonitor();
-						GetMethod method = runGetRequestPath("/values/case/types", monitor);
+						GetMethod method = runGetRequestPath(VALUES_CASE_TYPES, monitor);
 						try {
 							switch (method.getStatusCode()) {
 							case HttpURLConnection.HTTP_OK:
@@ -704,7 +762,7 @@ public class RhcpClientImpl implements RhcpClient {
 				RunnableFuture<List<String>> rf =  new FutureTask<List<String>>(new Callable<List<String>>() {
 					public List<String> call() throws Exception {
 						IProgressMonitor monitor = new NullProgressMonitor();
-						GetMethod method = runGetRequestPath("/values/case/severity", monitor);
+						GetMethod method = runGetRequestPath(VALUES_SEVERITIES, monitor);
 						try {
 							switch (method.getStatusCode()) {
 							case HttpURLConnection.HTTP_OK:
@@ -751,7 +809,7 @@ public class RhcpClientImpl implements RhcpClient {
 				RunnableFuture<List<String>> rf =  new FutureTask<List<String>>(new Callable<List<String>>() {
 					public List<String> call() throws Exception {
 						IProgressMonitor monitor = new NullProgressMonitor();
-						GetMethod method = runGetRequestPath("/values/case/status", monitor);
+						GetMethod method = runGetRequestPath(VALUES_STATUSES, monitor);
 						try {
 							switch (method.getStatusCode()) {
 							case HttpURLConnection.HTTP_OK:
@@ -785,6 +843,47 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 		try {
 			return statuses.get();
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
+		} catch (ExecutionException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
+	public List<User> getUsers(final String accountNumber) {
+		RunnableFuture<List<User>> nf = new FutureTask<List<User>>(new Callable<List<User>>() {
+			public List<User> call() throws Exception {
+				IProgressMonitor monitor = new NullProgressMonitor();
+				GetMethod method = runGetRequestPath(ACCOUNT_USERS_PREFIX + accountNumber + ACCOUNT_USERS_SUFFIX, monitor);
+				try {
+					switch (method.getStatusCode()) {
+					case HttpURLConnection.HTTP_OK:
+						try {
+							InputStream is = method.getResponseBodyAsStream();
+						    Unmarshaller um = jaxbContext.createUnmarshaller();
+						    Users users = (Users) um.unmarshal(is);
+						    return users.getUser();
+						} catch (IOException e) {
+							throw new RuntimeException(e);
+						} catch (JAXBException e) {
+							throw new RuntimeException(e);
+						}
+					default:
+						throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+					}
+				} finally {
+					WebUtil.releaseConnection(method, monitor);
+				}
+			}
+		});
+		Future<List<User>> f = users.putIfAbsent(accountNumber, nf);
+		if (f == null) {
+			f = nf;
+			nf.run();
+		}
+
+		try {
+			return f.get();
 		} catch (InterruptedException e) {
 			throw new RuntimeException(e);
 		} catch (ExecutionException e) {

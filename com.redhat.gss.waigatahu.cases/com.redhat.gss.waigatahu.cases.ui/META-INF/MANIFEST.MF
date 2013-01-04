@@ -21,4 +21,5 @@ Import-Package: org.eclipse.mylyn.commons.core,
  org.eclipse.mylyn.tasks.ui.wizards,
  org.eclipse.ui.forms,
  org.eclipse.ui.forms.editor,
- org.eclipse.ui.forms.events
+ org.eclipse.ui.forms.events,
+ org.eclipse.ui.forms.widgets

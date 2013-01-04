@@ -1,9 +1,7 @@
 package com.redhat.gss.waigatahu.cases.core;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +14,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.mylyn.commons.net.Policy;
+import org.eclipse.mylyn.tasks.core.IRepositoryPerson;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITaskMapping;
 import org.eclipse.mylyn.tasks.core.RepositoryResponse;
@@ -24,7 +23,6 @@ import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskDataHandler;
 import org.eclipse.mylyn.tasks.core.data.TaskAttachmentMapper;
 import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
-import org.eclipse.mylyn.tasks.core.data.TaskAttributeMapper;
 import org.eclipse.mylyn.tasks.core.data.TaskAttributeMetaData;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskDataCollector;
@@ -33,7 +31,11 @@ import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
 import com.redhat.gss.strata.model.Attachment;
 import com.redhat.gss.strata.model.Case;
 import com.redhat.gss.strata.model.Comment;
+import com.redhat.gss.strata.model.Group;
+import com.redhat.gss.strata.model.Link;
+import com.redhat.gss.strata.model.NotifiedUsers;
 import com.redhat.gss.strata.model.Product;
+import com.redhat.gss.strata.model.User;
 import com.redhat.gss.waigatahu.cases.core.client.CaseQuery;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
 import com.redhat.gss.waigatahu.cases.data.CaseAttribute;
@@ -68,13 +70,12 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		try {
 			monitor.beginTask("Updating Case", IProgressMonitor.UNKNOWN);
 			Case supportCase = createCaseFromTaskData(repository, taskData, monitor);
-			String uri = taskData.getRoot().getAttribute(CaseAttribute.CASE_URI).getValue();
-			client.updateCaseMetadata(new CaseId(uri), supportCase, monitor);
+			CaseId caseId = new CaseId(taskData.getRoot().getAttribute(CaseAttribute.CASE_URI).getValue());
+			client.updateCaseMetadata(caseId, supportCase, monitor);
 
 			TaskAttribute newComment = taskData.getRoot().getAttribute(TaskAttribute.COMMENT_NEW);
 			if (!newComment.getValue().isEmpty()) {
 				//FIXME: post comment
-				CaseId caseId = connector.taskIdToCaseUrl(taskData.getTaskId());
 				client.postComment(caseId, newComment.getValue(), newComment, monitor);
 			}
 			
@@ -112,7 +113,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		return true;
 	}
 
-	public TaskAttributeMapper getAttributeMapper(TaskRepository repository) {
+	public CaseAttributeMapper getAttributeMapper(TaskRepository repository) {
 		return new CaseAttributeMapper(repository);
 	}
 
@@ -259,6 +260,13 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			attr.putOption(s, s);
 		}
 
+		attr = addAttribute(taskData, CaseAttribute.CASE_TYPE, null,
+				TaskAttribute.TYPE_SINGLE_SELECT, "Case type",
+				true, readOnly);
+		for (String s: client.getTypes()) {
+			attr.putOption(s, s);
+		}
+
 		attr = addAttribute(taskData, TaskAttribute.PRODUCT, null,
 				TaskAttribute.TYPE_SINGLE_SELECT, "Product",
 				true, readOnly);
@@ -268,6 +276,18 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 		attr = addAttribute(taskData, TaskAttribute.VERSION, null,
 				TaskAttribute.TYPE_SINGLE_SELECT, "Version",
+				true, readOnly);
+	
+		addAttribute(taskData, CaseAttribute.ALTERNATE_ID, null,
+				TaskAttribute.TYPE_SHORT_TEXT, "Alternate ID",
+				true, readOnly);
+	
+		addAttribute(taskData, CaseAttribute.ACCOUNT_NUMBER, null,
+				TaskAttribute.TYPE_LONG, "Account Number",
+				false, true);
+	
+		addAttribute(taskData, CaseAttribute.FOLDER, null,
+				TaskAttribute.TYPE_SINGLE_SELECT, "Case Group",
 				true, readOnly);
 
 		addAttribute(taskData, TaskAttribute.DATE_CREATION, null,
@@ -281,11 +301,21 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 				TaskAttribute.TYPE_SHORT_TEXT, "Summary",
 				false, readOnly);
 
+		addAttribute(taskData, CaseAttribute.USER_CONTACT, null,
+				TaskAttribute.TYPE_PERSON, "Primary Customer Contact",
+				false, readOnly);
+		addAttribute(taskData, TaskAttribute.USER_CC, null,
+				TaskAttribute.TYPE_MULTI_SELECT/*TYPE_PERSON*/, "Notified users",
+				false, readOnly);
+
+		addAttribute(taskData, CaseAttribute.USER_LAST_MODIFIER, null,
+				TaskAttribute.TYPE_PERSON, "Last Modified By",
+				false, true);
 		addAttribute(taskData, TaskAttribute.USER_ASSIGNED, null,
-				TaskAttribute.TYPE_PERSON, "Owner",
+				TaskAttribute.TYPE_PERSON, "Red Hat Owner",
 				false, true);
 		addAttribute(taskData, TaskAttribute.USER_REPORTER, null,
-				TaskAttribute.TYPE_PERSON, "Contact",
+				TaskAttribute.TYPE_PERSON, "Created by",
 				false, true);
 		addAttribute(taskData, CaseAttribute.CLOSED, null,
 				TaskAttribute.TYPE_BOOLEAN, "Closed",
@@ -304,25 +334,70 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		addAttribute(taskData, CaseAttribute.CASE_URI, null,
 				TaskAttribute.TASK_URL, "RS URI",
 				false, true);
+
+
+		// support level (RO)
+		// group - how do we find out if it's available to them?
 	}
 
 	private void updateTaskData(RhcpClient client, TaskRepository repository, TaskData taskData, Case supportCase) {
 		TaskAttribute root = taskData.getRoot();
 
+		// core data
+		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.TASK_KEY), supportCase.getCaseNumber());
+		getAttributeMapper(repository).setValue(root.getAttribute(CaseAttribute.CASE_URI), supportCase.getUri());
+		getAttributeMapper(repository).setDateValue(root.getAttribute(TaskAttribute.DATE_CREATION), supportCase.getCreatedDate().getTime());
+		getAttributeMapper(repository).setDateValue(root.getAttribute(TaskAttribute.DATE_MODIFICATION), supportCase.getLastModifiedDate().getTime());
+		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.SUMMARY), supportCase.getSummary());
+		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.STATUS), supportCase.getStatus());
+		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.SEVERITY), supportCase.getSeverity());
 
-		root.getAttribute(TaskAttribute.TASK_KEY).setValue(supportCase.getCaseNumber());
-		root.getAttribute(CaseAttribute.CASE_URI).setValue(supportCase.getUri());
-		root.getAttribute(TaskAttribute.DATE_CREATION).setValue(supportCase.getCreatedDate().getTime().toString());
-		root.getAttribute(TaskAttribute.DATE_MODIFICATION).setValue(supportCase.getLastModifiedDate().getTime().toString());
-		root.getAttribute(TaskAttribute.SUMMARY).setValue(supportCase.getSummary());
-		root.getAttribute(TaskAttribute.USER_ASSIGNED).setValue(supportCase.getOwner());
-		root.getAttribute(TaskAttribute.USER_REPORTER).setValue(supportCase.getContactName());
-		root.getAttribute(TaskAttribute.STATUS).setValue(supportCase.getStatus());
-		root.getAttribute(TaskAttribute.SEVERITY).setValue(supportCase.getSeverity());
+		
+		// custom data
+		getAttributeMapper(repository).setBooleanValue(root.getAttribute(CaseAttribute.CLOSED), supportCase.getClosed());
+		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(CaseAttribute.CASE_TYPE), supportCase.getType());
+		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(CaseAttribute.ALTERNATE_ID), supportCase.getAlternateId());
+		getAttributeMapper(repository).setValue(root.getAttribute(CaseAttribute.ACCOUNT_NUMBER), supportCase.getAccountNumber());
 
-		root.getAttribute(TaskAttribute.PRODUCT).setValue(supportCase.getProduct());
-		root.getAttribute(TaskAttribute.VERSION).setValue(blankNull(supportCase.getVersion()));
+		
+		// users
+		getAttributeMapper(repository).setRepositoryPerson(root.getAttribute(TaskAttribute.USER_ASSIGNED),
+				repository.createPerson(supportCase.getOwner()));
+		getAttributeMapper(repository).setRepositoryPerson(root.getAttribute(TaskAttribute.USER_REPORTER),
+				repository.createPerson(supportCase.getCreatedBy()));
+		getAttributeMapper(repository).setRepositoryPerson(root.getAttribute(CaseAttribute.USER_LAST_MODIFIER),
+				repository.createPerson(supportCase.getLastModifiedBy()));
+
+		IRepositoryPerson contactPerson = repository.createPerson((supportCase.getContactSsoUsername() != null) ? supportCase.getContactSsoUsername() : supportCase.getContactName());
+		contactPerson.setName(supportCase.getContactName());
+		TaskAttribute userContactAttr = root.getAttribute(CaseAttribute.USER_CONTACT);
+		getAttributeMapper(repository).setRepositoryPerson(userContactAttr, contactPerson);
+		userContactAttr.putOption(contactPerson.getName(), contactPerson.getPersonId());
+		
+		// CC'd users
+		TaskAttribute usersCcAttr = root.getAttribute(TaskAttribute.USER_CC);
+		NotifiedUsers notifiedUsers = supportCase.getNotifiedUsers();
+		if (notifiedUsers != null) {
+			for (Link l: notifiedUsers.getLink()) {
+				//add CC'd users
+				IRepositoryPerson ccPerson = repository.createPerson(l.getSsoUsername());
+				ccPerson.setName(l.getValue());
+				getAttributeMapper(repository).addRepositoryPerson(usersCcAttr, ccPerson);
+			}
+		}
+		
+		for (User u: client.getUsers(supportCase.getAccountNumber())) {
+			//FIXME: i18n of combining names sucks
+			String name = u.getFirstName() + " " + u.getLastName();
+			userContactAttr.putOption(u.getSsoUsername(), name);
+			usersCcAttr.putOption( u.getSsoUsername(), name);
+		}
+
+		
+		// product and version
+		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.PRODUCT), supportCase.getProduct());
 		if (supportCase.getProduct() != null) {
+			root.getAttribute(TaskAttribute.VERSION).clearOptions();
 			for (String v: client.getVersions(supportCase.getProduct())) {
 				root.getAttribute(TaskAttribute.VERSION).putOption(v, v);
 			}
@@ -330,30 +405,25 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			// no product but there was a version...
 			//FIXME: report the error?
 		}
-
-		root.getAttribute(CaseAttribute.CLOSED).setValue(boolToString(supportCase.getClosed()));
+		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(TaskAttribute.VERSION), supportCase.getVersion());
 		/* FIXME: TODO:
-		 * closed
-		 * caseNumber
-		 * createdBy
-		 * createdDate
-		 * lastModifiedBy
+		 * component
 		 * id
-		 * uri
-		 * type
-		 * accountNumber
 		 * escalated
-		 * contactName
-		 * contactSsoUsername
 		 * origin
 		 * entitlement
 		 */
 
-		/*for (Link l: supportCase.getNotifiedUsers().getLink()) {
-			//FIXME: add CC'd users
-		}*/
+		
+		// case groups
+		TaskAttribute folderAttr = root.getAttribute(CaseAttribute.FOLDER);
+		getAttributeMapper(repository).setNullableStringValue(folderAttr, supportCase.getFolderNumber());
+		for (Group p: client.getGroups()) {
+			folderAttr.putOption(p.getName(), p.getNumber());
+		}
 
 		
+		// comments
 		List<Comment> comments = supportCase.getComments().getComment();
 		int count = 0;
 		for (Comment c: comments) {
@@ -362,7 +432,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			} else {
 				CommentMapper mapper = CommentMapper.createFrom(repository, c);  // Create a new one each time, to be safe.
 				//mapper.setNumber(count);
-			 
+
 			    // Create, in the task data object, a new attribute that will hold this comment.
 				TaskAttribute attribute = root.createAttribute(TaskAttribute.PREFIX_COMMENT + count);
 				mapper.applyTo(attribute);
@@ -393,30 +463,16 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		//FIXME: are these required?
 		supportCase.setSeverity(root.getAttribute(TaskAttribute.SEVERITY).getValue());
 		supportCase.setProduct(root.getAttribute(TaskAttribute.PRODUCT).getValue());
-		
+
 		String version = root.getAttribute(TaskAttribute.VERSION).getValue();
 		if (version.isEmpty())
 			throw new CoreException(new Status(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, "Version is missing"));
 		supportCase.setVersion(version);
 
-		// root.getAttribute(TaskAttribute.USER_REPORTER).setValue(supportCase.getContactName());
+		supportCase.setContactName(root.getAttribute(TaskAttribute.USER_REPORTER).getValue());
+		supportCase.setType(root.getAttribute(CaseAttribute.CASE_TYPE).getValue());
+		supportCase.setAlternateId(root.getAttribute(CaseAttribute.ALTERNATE_ID).getValue());
 		return supportCase;
-	}
-
-	private String dateToString(Calendar date) {
-		 return (date != null) ? date.getTime().toString() : null;
-	}
-
-	private String dateToString(Date date) {
-		return (date != null) ? date.toString() : null;
-	}
-
-	private String boolToString(Boolean b) {
-		return (b != null) ? b.toString() : "";
-	}
-
-	private String blankNull(String s) {
-		return (s != null) ? s : "";
 	}
 
 	private TaskAttribute addAttribute(TaskData taskData, String key, String value,

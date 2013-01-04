@@ -10,7 +10,9 @@ import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
 
 import com.redhat.gss.strata.model.Attachment;
 import com.redhat.gss.strata.model.Case;
+import com.redhat.gss.strata.model.Group;
 import com.redhat.gss.strata.model.Product;
+import com.redhat.gss.strata.model.User;
 import com.redhat.gss.waigatahu.cases.core.CaseId;
 
 public interface RhcpClient {
@@ -47,4 +49,6 @@ public interface RhcpClient {
 	List<String> getStatuses();
 	List<String> getSeverities();
 	List<String> getTypes();
+	List<Group> getGroups();
+	List<User> getUsers(String accountNumber);
 }

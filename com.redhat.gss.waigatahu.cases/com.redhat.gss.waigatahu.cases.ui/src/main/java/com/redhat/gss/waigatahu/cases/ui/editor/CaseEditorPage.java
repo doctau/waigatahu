@@ -1,7 +1,9 @@
 package com.redhat.gss.waigatahu.cases.ui.editor;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.dialogs.IMessageProvider;
@@ -12,13 +14,17 @@ import org.eclipse.mylyn.tasks.core.data.TaskDataModel;
 import org.eclipse.mylyn.tasks.core.data.TaskDataModelEvent;
 import org.eclipse.mylyn.tasks.core.data.TaskDataModelListener;
 import org.eclipse.mylyn.tasks.ui.editors.AbstractTaskEditorPage;
+import org.eclipse.mylyn.tasks.ui.editors.AbstractTaskEditorPart;
+import org.eclipse.mylyn.tasks.ui.editors.AttributeEditorFactory;
 import org.eclipse.mylyn.tasks.ui.editors.TaskEditor;
 import org.eclipse.mylyn.tasks.ui.editors.TaskEditorInput;
+import org.eclipse.mylyn.tasks.ui.editors.TaskEditorPartDescriptor;
 import org.eclipse.ui.forms.events.HyperlinkAdapter;
 import org.eclipse.ui.forms.events.HyperlinkEvent;
 
 import com.redhat.gss.waigatahu.cases.core.CaseRepositoryConnector;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
+import com.redhat.gss.waigatahu.cases.data.CaseAttribute;
 
 public class CaseEditorPage extends AbstractTaskEditorPage {
 	private final CaseRepositoryConnector connector;
@@ -26,17 +32,11 @@ public class CaseEditorPage extends AbstractTaskEditorPage {
 	public CaseEditorPage(TaskEditor editor, String connectorKind, CaseRepositoryConnector connector) {
 		super(editor, connectorKind);
 		this.connector = connector;
-		init(editor);
 	}
 
 	public CaseEditorPage(TaskEditor editor, String id, String label, String connectorKind, CaseRepositoryConnector connector) {
 		super(editor, id, label, connectorKind);
 		this.connector = connector;
-		init(editor);
-	}
-
-	private void init(TaskEditor editor) {
-		//this.createAttributeEditorFactory();
 	}
 
 	protected TaskDataModel createModel(TaskEditorInput input) throws CoreException {
@@ -47,6 +47,37 @@ public class CaseEditorPage extends AbstractTaskEditorPage {
 			}
 		});
 		return model;
+	}
+
+
+	@Override
+	protected Set<TaskEditorPartDescriptor> createPartDescriptors() {
+		Set<TaskEditorPartDescriptor> descriptors = super.createPartDescriptors();
+		// remove unnecessary default editor parts
+		for (Iterator<TaskEditorPartDescriptor> it = descriptors.iterator(); it.hasNext();) {
+			TaskEditorPartDescriptor taskEditorPartDescriptor = it.next();
+			if (taskEditorPartDescriptor.getId().equals(ID_PART_PEOPLE)) {
+				it.remove();
+			}
+		}
+		descriptors.add(new TaskEditorPartDescriptor(ID_PART_PEOPLE) {
+			@Override
+			public AbstractTaskEditorPart createPart() {
+				return new TaskEditorPeoplePart() {
+					protected List<String> getDisplayedAttributes() {
+						List<String> attrs = super.getDisplayedAttributes();
+						attrs.add(CaseAttribute.USER_CONTACT);
+						attrs.add(CaseAttribute.USER_LAST_MODIFIER);
+						return attrs;
+					}
+				};
+			}
+		}.setPath(PATH_PEOPLE));
+		return descriptors;
+	}
+
+	protected AttributeEditorFactory createAttributeEditorFactory() {
+		return new CaseAttributeEditorFactory(getModel(), getTaskRepository(), getEditorSite());
 	}
 
 	protected void attributeChanged(TaskDataModelEvent event) {
@@ -94,16 +125,32 @@ public class CaseEditorPage extends AbstractTaskEditorPage {
 		TaskAttribute root = getModel().getTaskData().getRoot();
 		List<TaskAttribute> invalid = new ArrayList<TaskAttribute>();
 		
-		if (root.getAttribute(TaskAttribute.DESCRIPTION).getValue().isEmpty())
+		if (root.getAttribute(TaskAttribute.DESCRIPTION).getValue().isEmpty()) {
 			invalid.add(root.getAttribute(TaskAttribute.DESCRIPTION));
+		}
 		
-		if (root.getAttribute(TaskAttribute.SUMMARY).getValue().isEmpty())
+		if (root.getAttribute(TaskAttribute.SUMMARY).getValue().isEmpty()) {
 			invalid.add(root.getAttribute(TaskAttribute.SUMMARY));
+		}
 		
-		if (root.getAttribute(TaskAttribute.PRODUCT).getValue().isEmpty())
+		if (root.getAttribute(TaskAttribute.PRODUCT).getValue().isEmpty()) {
 			invalid.add(root.getAttribute(TaskAttribute.PRODUCT));
-		else if (root.getAttribute(TaskAttribute.VERSION).getValue().isEmpty())
+		} else if (root.getAttribute(TaskAttribute.VERSION).getValue().isEmpty()) {
 			invalid.add(root.getAttribute(TaskAttribute.VERSION));
+		}
+		
+		TaskAttribute contactAttr = root.getAttribute(CaseAttribute.USER_CONTACT);
+		if (contactAttr.getOption(contactAttr.getValue()) == null) {
+			//unknown contact
+			invalid.add(root.getAttribute(CaseAttribute.USER_CONTACT));
+		}
+
+		TaskAttribute ccAttr = root.getAttribute(TaskAttribute.USER_CC);
+		for (String c: ccAttr.getValues())
+		if (contactAttr.getOption(c) == null) {
+			//unknown contact
+			invalid.add(root.getAttribute(TaskAttribute.USER_CC));
+		}
 		
 		return invalid;
 	}
