@@ -344,6 +344,11 @@ public class RhcpClientImpl implements RhcpClient {
 			throw new RuntimeException(e);
 		}
 	}
+	
+	public String getContactName(IProgressMonitor monitor) {
+		AuthenticationCredentials creds = repository.getCredentials(AuthenticationType.REPOSITORY);
+		return creds.getUserName();
+	}
 
 	public Collection<Case> queryCases(CaseQuery query, IProgressMonitor monitor) {
 		GetMethod gm = new GetMethod(ALL_OPEN_CASES_PATH);

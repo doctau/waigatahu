@@ -22,6 +22,7 @@ public interface RhcpClient {
 	void validateConnection(IProgressMonitor monitor);
 	boolean canCreateCases();
 	String getAccountNumber(IProgressMonitor monitor);
+	String getContactName(IProgressMonitor monitor);
 
 	//cases
 	Case getCase(CaseId caseId, IProgressMonitor monitor);

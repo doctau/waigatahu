@@ -108,7 +108,12 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		RhcpClient client = connector.getClient(repository);
 		taskData.setVersion(TASK_DATA_VERSION);
 		createDefaultAttributes(taskData, client, client.getAccountNumber(monitor));
-		taskData.getRoot().getAttribute(TaskAttribute.STATUS).getMetaData().setKind(null);
+
+		// special values for new tasks
+		TaskAttribute root = taskData.getRoot();
+		root.getAttribute(TaskAttribute.STATUS).getMetaData().setKind(null);
+		String user = client.getContactName(monitor);
+		root.getAttribute(CaseAttribute.USER_CONTACT).setValue(user);
 		
 		return true;
 	}
