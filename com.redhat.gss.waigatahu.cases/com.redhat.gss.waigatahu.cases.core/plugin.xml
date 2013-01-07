@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.4"?>
 <plugin>
-
+	<extension point="org.eclipse.mylyn.tasks.ui.duplicateDetectors">
+       <detector
+             class="com.redhat.gss.waigatahu.cases.recommendation.DuplicateDetector"
+             name="Case duplicate detector">
+       </detector>
+    </extension>
 </plugin>
