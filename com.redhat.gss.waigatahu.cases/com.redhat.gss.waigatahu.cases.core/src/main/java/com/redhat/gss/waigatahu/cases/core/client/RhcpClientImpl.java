@@ -3,6 +3,9 @@ package com.redhat.gss.waigatahu.cases.core.client;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -56,6 +59,7 @@ import com.redhat.gss.strata.model.Attachments;
 import com.redhat.gss.strata.model.Case;
 import com.redhat.gss.strata.model.Cases;
 import com.redhat.gss.strata.model.Comment;
+import com.redhat.gss.strata.model.Entitlement;
 import com.redhat.gss.strata.model.Group;
 import com.redhat.gss.strata.model.Groups;
 import com.redhat.gss.strata.model.Product;
@@ -98,7 +102,7 @@ public class RhcpClientImpl implements RhcpClient {
 	}
 
 	private static final String USER_AGENT = "Waigatahu 0.0.1";
-	private static final String VALIDATE_PATH = "/accounts/defaultAccount";
+	private static final String VALIDATE_PATH = "/accounts";
 	private static final String ALL_OPEN_CASES_PATH = "/cases/";
 	private static final String POST_CASE = "/cases";
 	private static final String ALL_CASE_ATTACHMENTS = "/attachments";
@@ -129,6 +133,7 @@ public class RhcpClientImpl implements RhcpClient {
 	private final JAXBContext jaxbContext;
 
 	// cached values
+	Future<String> accountNumber = null;
 	Future<List<Product>> products = null;
 	ConcurrentMap<String, Future<List<String>>> versions = new ConcurrentHashMap<String, Future<List<String>>>();
 	Future<List<String>> types = null;
@@ -289,26 +294,54 @@ public class RhcpClientImpl implements RhcpClient {
 
 
 	public void validateConnection(IProgressMonitor monitor) {
-		GetMethod method = runGetRequestPath(VALIDATE_PATH, monitor);
-		try {
-			switch (method.getStatusCode()) {
-			case HttpURLConnection.HTTP_OK:
-				try {
-					InputStream is = method.getResponseBodyAsStream();
-				    Unmarshaller um = jaxbContext.createUnmarshaller();
-				    Account account = (Account) um.unmarshal(is);
-				    // FIXME: no data is set on it???
-				} catch (IOException e) {
-					throw new RuntimeException(e);
-				} catch (JAXBException e) {
-					throw new RuntimeException(e);
-				}
-				break;
-			default:
-				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+		synchronized (this) {
+			if (accountNumber!= null && accountNumber.isDone())
+				accountNumber = null;
+		}
+		getAccountNumber(monitor);
+	}
+	
+	public String getAccountNumber(final IProgressMonitor monitor) {
+		Future<String> an;
+		synchronized (this) {
+			if (accountNumber == null) {
+				RunnableFuture<String> rf =  new FutureTask<String>(new Callable<String>() {
+					public String call() throws Exception {
+						GetMethod method = runGetRequestPath(VALIDATE_PATH, monitor);
+						try {
+							switch (method.getStatusCode()) {
+							case HttpURLConnection.HTTP_OK:
+								try {
+									return method.getResponseBodyAsString();
+									/*InputStream is = method.getResponseBodyAsStream();
+								    Unmarshaller um = jaxbContext.createUnmarshaller();
+								    Account account = (Account) um.unmarshal(is);
+								    // FIXME: no data is set on it???
+								    return account.getNumber();*/
+								} catch (IOException e) {
+									throw new RuntimeException(e);
+								}/* catch (JAXBException e) {
+									throw new RuntimeException(e);
+								}*/
+							default:
+								throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
+							}
+						} finally {
+							WebUtil.releaseConnection(method, monitor);
+						}
+					}
+				});
+				accountNumber = rf;
+				rf.run();
 			}
-		} finally {
-			WebUtil.releaseConnection(method, monitor);
+			an = accountNumber;
+		}
+		try {
+			return an.get();
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
+		} catch (ExecutionException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -556,6 +589,8 @@ public class RhcpClientImpl implements RhcpClient {
 			default:
 				String err2;
 				try {
+					Writer writer = new StringWriter();
+					jaxbContext.createMarshaller().marshal(supportCase, writer);
 					err2 = method.getResponseBodyAsString();
 				} catch (IOException e) {}
 				throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
@@ -728,6 +763,8 @@ public class RhcpClientImpl implements RhcpClient {
 								    for (Value v: values.getValue()) {
 								    	vs.add(v.getName());
 								    }
+								    // field is optional
+								    vs.add("");
 								    return vs;
 								} catch (IOException e) {
 									throw new RuntimeException(e);

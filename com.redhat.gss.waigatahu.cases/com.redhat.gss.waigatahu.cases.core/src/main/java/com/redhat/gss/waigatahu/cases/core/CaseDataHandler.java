@@ -43,7 +43,7 @@ import com.redhat.gss.waigatahu.cases.data.QueryAttribute;
 
 public class CaseDataHandler extends AbstractTaskDataHandler {
 	private final String TASK_DATA_VERSION = "1";
-	
+
 	private final CaseRepositoryConnector connector;
 
 	public CaseDataHandler(CaseRepositoryConnector connector) {
@@ -107,7 +107,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			throws CoreException {
 		RhcpClient client = connector.getClient(repository);
 		taskData.setVersion(TASK_DATA_VERSION);
-		createDefaultAttributes(taskData, client);
+		createDefaultAttributes(taskData, client, client.getAccountNumber(monitor));
 		taskData.getRoot().getAttribute(TaskAttribute.STATUS).getMetaData().setKind(null);
 		
 		return true;
@@ -184,7 +184,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		TaskData taskData = new TaskData(getAttributeMapper(repository), WaigatahuCaseCorePlugin.CONNECTOR_KIND,
 				repository.getRepositoryUrl(), taskId);
 		taskData.setVersion(TASK_DATA_VERSION);
-		createDefaultAttributes(taskData, client);
+		createDefaultAttributes(taskData, client, client.getAccountNumber(monitor));
 		updateTaskData(client, repository, taskData, supportCase);
 
 		// attachments are not loaded yet
@@ -243,7 +243,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	// Mappings from RhcpSupportCase to TaskData
 	
-	private void createDefaultAttributes(TaskData taskData, RhcpClient client) {
+	private void createDefaultAttributes(TaskData taskData, RhcpClient client, String accountNumber) {
 		final boolean readOnly = false;
 
 		TaskAttribute attr = addAttribute(taskData, TaskAttribute.STATUS, null,
@@ -301,10 +301,10 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 				TaskAttribute.TYPE_SHORT_TEXT, "Summary",
 				false, readOnly);
 
-		addAttribute(taskData, CaseAttribute.USER_CONTACT, null,
+		TaskAttribute userContactAttr = addAttribute(taskData, CaseAttribute.USER_CONTACT, null,
 				TaskAttribute.TYPE_PERSON, "Primary Customer Contact",
 				false, readOnly);
-		addAttribute(taskData, TaskAttribute.USER_CC, null,
+		TaskAttribute usersCcAttr = addAttribute(taskData, TaskAttribute.USER_CC, null,
 				TaskAttribute.TYPE_MULTI_SELECT/*TYPE_PERSON*/, "Notified users",
 				false, readOnly);
 
@@ -335,6 +335,13 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 				TaskAttribute.TASK_URL, "RS URI",
 				false, true);
 
+
+		for (User u: client.getUsers(accountNumber)) {
+			//FIXME: i18n of combining names sucks
+			String name = u.getFirstName() + " " + u.getLastName();
+			userContactAttr.putOption(u.getSsoUsername(), name);
+			usersCcAttr.putOption( u.getSsoUsername(), name);
+		}
 
 		// support level (RO)
 		// group - how do we find out if it's available to them?
@@ -384,13 +391,6 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 				ccPerson.setName(l.getValue());
 				getAttributeMapper(repository).addRepositoryPerson(usersCcAttr, ccPerson);
 			}
-		}
-		
-		for (User u: client.getUsers(supportCase.getAccountNumber())) {
-			//FIXME: i18n of combining names sucks
-			String name = u.getFirstName() + " " + u.getLastName();
-			userContactAttr.putOption(u.getSsoUsername(), name);
-			usersCcAttr.putOption( u.getSsoUsername(), name);
 		}
 
 		
