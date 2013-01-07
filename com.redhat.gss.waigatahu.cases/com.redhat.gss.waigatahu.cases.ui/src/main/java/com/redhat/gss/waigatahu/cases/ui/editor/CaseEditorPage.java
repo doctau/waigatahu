@@ -108,11 +108,12 @@ public class CaseEditorPage extends AbstractTaskEditorPage {
 			// how do you append a list to the message in a nice way?
 			StringBuilder sb = new StringBuilder();
 			for (TaskAttribute attr: invalid) {
-				sb.append(attr.getMetaData().getLabel());
-				sb.append(',');
+				String msg = Messages.bind(Messages.CaseEditorPage_Validation_failed, attr.getMetaData().getLabel());
+				sb.append(msg);
+				sb.append('\n');
 			}
 			//FIXME: add the list of fields to the error
-			getTaskEditor().setMessage(org.eclipse.mylyn.internal.tasks.ui.editors.Messages.AbstractTaskEditorPage_Could_not_save_task, IMessageProvider.ERROR,
+			getTaskEditor().setMessage(sb.toString(), IMessageProvider.ERROR,
 					new HyperlinkAdapter() {
 						public void linkActivated(HyperlinkEvent event) {
 							EditorUtil.reveal(getManagedForm().getForm(), invalid.get(0).getId());
