@@ -1,6 +1,7 @@
 package com.redhat.gss.waigatahu.cases.core;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,10 +40,18 @@ import com.redhat.gss.strata.model.User;
 import com.redhat.gss.waigatahu.cases.core.client.CaseQuery;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
 import com.redhat.gss.waigatahu.cases.data.CaseAttribute;
+import com.redhat.gss.waigatahu.cases.data.PersonAttribute;
 import com.redhat.gss.waigatahu.cases.data.QueryAttribute;
 
 public class CaseDataHandler extends AbstractTaskDataHandler {
 	private final String TASK_DATA_VERSION = "1";
+	
+	private final List<String> FIELDS_HIDDEN_NEW_CASE = Arrays.asList(
+			TaskAttribute.STATUS,
+			TaskAttribute.USER_ASSIGNED,
+			TaskAttribute.USER_REPORTER,
+			CaseAttribute.USER_LAST_MODIFIER
+	);
 
 	private final CaseRepositoryConnector connector;
 
@@ -56,8 +65,11 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		RhcpClient client = connector.getClient(repository);
 		if (taskData.isNew()) {
 			RepositoryResponse response = createCase(client, repository, taskData, monitor);
-			// show the status field
-			taskData.getRoot().getAttribute(TaskAttribute.STATUS).getMetaData().setKind(null);
+
+			// show the fields hidden for new cases
+			for (String field: FIELDS_HIDDEN_NEW_CASE)  {
+				taskData.getRoot().getAttribute(field).getMetaData().setKind(TaskAttribute.KIND_PEOPLE);
+			}
 			return response;
 		} else {
 			RepositoryResponse response = updateCase(client, repository, taskData, oldAttributes, monitor);
@@ -109,9 +121,14 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		taskData.setVersion(TASK_DATA_VERSION);
 		createDefaultAttributes(taskData, client, client.getAccountNumber(monitor));
 
-		// special values for new tasks
 		TaskAttribute root = taskData.getRoot();
-		root.getAttribute(TaskAttribute.STATUS).getMetaData().setKind(null);
+
+		// hide fields that don't make sense before it's created
+		for (String field: FIELDS_HIDDEN_NEW_CASE)  {
+			taskData.getRoot().getAttribute(field).getMetaData().setKind(null);
+		}
+
+		// default values for new tasks
 		String user = client.getContactName(monitor);
 		root.getAttribute(CaseAttribute.USER_CONTACT).setValue(user);
 		
@@ -190,6 +207,11 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 				repository.getRepositoryUrl(), taskId);
 		taskData.setVersion(TASK_DATA_VERSION);
 		createDefaultAttributes(taskData, client, client.getAccountNumber(monitor));
+
+		// create the attributes which only exist for real tasks
+		addAttribute(taskData, TaskAttribute.COMMENT_NEW, "",
+				TaskAttribute.TYPE_LONG_RICH_TEXT, "New comment",
+				CaseAttribute.KIND_HIDDEN, false);
 		updateTaskData(client, repository, taskData, supportCase);
 
 		// attachments are not loaded yet
@@ -253,92 +275,93 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 		TaskAttribute attr = addAttribute(taskData, TaskAttribute.STATUS, null,
 				TaskAttribute.TYPE_SINGLE_SELECT, "Status",
-				true, readOnly);
+				TaskAttribute.KIND_DEFAULT, readOnly);
 		for (String s: client.getStatuses()) {
 			attr.putOption(s, s);
 		}
 
 		attr = addAttribute(taskData, TaskAttribute.SEVERITY, null,
 			TaskAttribute.TYPE_SINGLE_SELECT, "Severity",
-			true, readOnly);
+			TaskAttribute.KIND_DEFAULT, readOnly);
 		for (String s: client.getSeverities()) {
 			attr.putOption(s, s);
 		}
 
 		attr = addAttribute(taskData, CaseAttribute.CASE_TYPE, null,
 				TaskAttribute.TYPE_SINGLE_SELECT, "Case type",
-				true, readOnly);
+				TaskAttribute.KIND_DEFAULT, readOnly);
+		attr.putOption("", ""); // default is none
 		for (String s: client.getTypes()) {
 			attr.putOption(s, s);
 		}
 
 		attr = addAttribute(taskData, TaskAttribute.PRODUCT, null,
 				TaskAttribute.TYPE_SINGLE_SELECT, "Product",
-				true, readOnly);
+				TaskAttribute.KIND_DEFAULT, readOnly);
 		for (Product p: client.getProducts()) {
 			attr.putOption(p.getName(), p.getCode());
 		}
 
 		attr = addAttribute(taskData, TaskAttribute.VERSION, null,
 				TaskAttribute.TYPE_SINGLE_SELECT, "Version",
-				true, readOnly);
+				TaskAttribute.KIND_DEFAULT, readOnly);
 	
 		addAttribute(taskData, CaseAttribute.ALTERNATE_ID, null,
 				TaskAttribute.TYPE_SHORT_TEXT, "Alternate ID",
-				true, readOnly);
+				TaskAttribute.KIND_DEFAULT, readOnly);
 	
 		addAttribute(taskData, CaseAttribute.ACCOUNT_NUMBER, null,
 				TaskAttribute.TYPE_LONG, "Account Number",
-				false, true);
+				CaseAttribute.KIND_HIDDEN, true);
 	
 		addAttribute(taskData, CaseAttribute.FOLDER, null,
 				TaskAttribute.TYPE_SINGLE_SELECT, "Case Group",
-				true, readOnly);
+				TaskAttribute.KIND_DEFAULT, readOnly);
 
 		addAttribute(taskData, TaskAttribute.DATE_CREATION, null,
 				TaskAttribute.TYPE_DATETIME, "Created at",
-				false, true);
+				CaseAttribute.KIND_HIDDEN, true);
 		addAttribute(taskData, TaskAttribute.DATE_MODIFICATION, null,
 				TaskAttribute.TYPE_DATETIME, "Modified at",
-				false, true);
+				CaseAttribute.KIND_HIDDEN, true);
 	
 		addAttribute(taskData, TaskAttribute.SUMMARY, null,
 				TaskAttribute.TYPE_SHORT_TEXT, "Summary",
-				false, readOnly);
+				CaseAttribute.KIND_HIDDEN, readOnly);
 
 		TaskAttribute userContactAttr = addAttribute(taskData, CaseAttribute.USER_CONTACT, null,
 				TaskAttribute.TYPE_PERSON, "Primary Customer Contact",
-				false, readOnly);
+				TaskAttribute.KIND_PEOPLE, readOnly);
 		TaskAttribute usersCcAttr = addAttribute(taskData, TaskAttribute.USER_CC, null,
 				TaskAttribute.TYPE_MULTI_SELECT/*TYPE_PERSON*/, "Notified users",
-				false, readOnly);
+				TaskAttribute.KIND_PEOPLE, readOnly);
 
 		addAttribute(taskData, CaseAttribute.USER_LAST_MODIFIER, null,
 				TaskAttribute.TYPE_PERSON, "Last Modified By",
-				false, true);
+				TaskAttribute.KIND_PEOPLE, true);
 		addAttribute(taskData, TaskAttribute.USER_ASSIGNED, null,
 				TaskAttribute.TYPE_PERSON, "Red Hat Owner",
-				false, true);
+				TaskAttribute.KIND_PEOPLE, true);
 		addAttribute(taskData, TaskAttribute.USER_REPORTER, null,
 				TaskAttribute.TYPE_PERSON, "Created by",
-				false, true);
+				TaskAttribute.KIND_PEOPLE, true);
 		addAttribute(taskData, CaseAttribute.CLOSED, null,
 				TaskAttribute.TYPE_BOOLEAN, "Closed",
-				false, true);
+				CaseAttribute.KIND_HIDDEN, true);
 		addAttribute(taskData, TaskAttribute.DESCRIPTION, null,
 				TaskAttribute./*TYPE_LONG_TEXT*/TYPE_LONG_RICH_TEXT, "Description",
-				false, readOnly);
+				CaseAttribute.KIND_HIDDEN, readOnly);
 		addAttribute(taskData, TaskAttribute.TASK_KEY, null,
 				TaskAttribute.TYPE_LONG, "Case number",
-				false, readOnly);
-
-		addAttribute(taskData, TaskAttribute.COMMENT_NEW, null,
-				TaskAttribute.TYPE_LONG_RICH_TEXT, "New comment",
-				false, readOnly);
+				CaseAttribute.KIND_HIDDEN, readOnly);
 
 		addAttribute(taskData, CaseAttribute.CASE_URI, null,
 				TaskAttribute.TASK_URL, "RS URI",
-				false, true);
+				CaseAttribute.KIND_HIDDEN, true);
+
+		addAttribute(taskData, CaseAttribute.WEB_URL, null,
+				TaskAttribute.TASK_URL, "Customer Portal case URL",
+				CaseAttribute.KIND_HIDDEN, true);
 
 
 		for (User u: client.getUsers(accountNumber)) {
@@ -370,16 +393,15 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(CaseAttribute.CASE_TYPE), supportCase.getType());
 		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(CaseAttribute.ALTERNATE_ID), supportCase.getAlternateId());
 		getAttributeMapper(repository).setValue(root.getAttribute(CaseAttribute.ACCOUNT_NUMBER), supportCase.getAccountNumber());
+		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(CaseAttribute.WEB_URL), supportCase.getViewUri());
 
-		
+
 		// users
-		getAttributeMapper(repository).setRepositoryPerson(root.getAttribute(TaskAttribute.USER_ASSIGNED),
-				repository.createPerson(supportCase.getOwner()));
-		getAttributeMapper(repository).setRepositoryPerson(root.getAttribute(TaskAttribute.USER_REPORTER),
-				repository.createPerson(supportCase.getCreatedBy()));
-		getAttributeMapper(repository).setRepositoryPerson(root.getAttribute(CaseAttribute.USER_LAST_MODIFIER),
-				repository.createPerson(supportCase.getLastModifiedBy()));
+		bindUserAttribute(client, repository, root.getAttribute(TaskAttribute.USER_ASSIGNED), supportCase.getOwner());
+		bindUserAttribute(client, repository, root.getAttribute(TaskAttribute.USER_REPORTER), supportCase.getCreatedBy());
+		bindUserAttribute(client, repository, root.getAttribute(CaseAttribute.USER_LAST_MODIFIER), supportCase.getLastModifiedBy());
 
+		// contacts aren't RH people, so don't set the flag
 		IRepositoryPerson contactPerson = repository.createPerson((supportCase.getContactSsoUsername() != null) ? supportCase.getContactSsoUsername() : supportCase.getContactName());
 		contactPerson.setName(supportCase.getContactName());
 		TaskAttribute userContactAttr = root.getAttribute(CaseAttribute.USER_CONTACT);
@@ -423,6 +445,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		// case groups
 		TaskAttribute folderAttr = root.getAttribute(CaseAttribute.FOLDER);
 		getAttributeMapper(repository).setNullableStringValue(folderAttr, supportCase.getFolderNumber());
+		folderAttr.putOption("", ""); // default is none
 		for (Group p: client.getGroups()) {
 			folderAttr.putOption(p.getName(), p.getNumber());
 		}
@@ -444,6 +467,15 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			}
 			count++;
 		}
+	}
+
+	private void bindUserAttribute(RhcpClient client,
+			TaskRepository repository, TaskAttribute attr,
+			String userId) {
+		IRepositoryPerson person = repository.createPerson(userId);
+		getAttributeMapper(repository).setRepositoryPerson(attr, person);
+		TaskAttribute isRedhatAttr = new TaskAttribute(attr, PersonAttribute.IS_REDHAT);
+		getAttributeMapper(repository).setBooleanValue(isRedhatAttr, client.isUserRedHat(userId));
 	}
 	
 	private Case createCaseFromTaskData(TaskRepository repository, TaskData taskData, IProgressMonitor monitor) throws CoreException {
@@ -482,13 +514,13 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	private TaskAttribute addAttribute(TaskData taskData, String key, String value,
 			String attrType, String label,
-			boolean isVisible, boolean readOnly) {
+			String kind, boolean readOnly) {
 		TaskAttribute attr = taskData.getRoot().createAttribute(key);
 		if (value != null)
 			attr.setValue(value);
         TaskAttributeMetaData metaData = attr.getMetaData();
         metaData.setType(attrType);
-        metaData.setKind(isVisible ? TaskAttribute.KIND_DEFAULT : null);
+        metaData.setKind(kind); // FIXME: KIND_PEOPLE for some?
         metaData.setLabel(label);
         metaData.setReadOnly(readOnly);
         return attr;

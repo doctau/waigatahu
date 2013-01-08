@@ -1,7 +1,9 @@
 package com.redhat.gss.waigatahu.cases.ui.editor;
 
 import org.eclipse.mylyn.tasks.core.TaskRepository;
+import org.eclipse.mylyn.tasks.core.data.TaskAttribute;
 import org.eclipse.mylyn.tasks.core.data.TaskDataModel;
+import org.eclipse.mylyn.tasks.ui.editors.AbstractAttributeEditor;
 import org.eclipse.mylyn.tasks.ui.editors.AttributeEditorFactory;
 import org.eclipse.ui.services.IServiceLocator;
 
@@ -18,5 +20,16 @@ public class CaseAttributeEditorFactory extends AttributeEditorFactory {
 			TaskRepository taskRepository, IServiceLocator serviceLocator) {
 		super(model, taskRepository, serviceLocator);
 		this.model = model;
+	}
+	
+	public AbstractAttributeEditor createEditor(String type, TaskAttribute taskAttribute) {
+		if (TaskAttribute.TYPE_PERSON.equals(type)) {
+			return new CasePersonAttributeEditor(model, taskAttribute);
+		} else if (TaskAttribute.TYPE_COMMENT.equals(type)) {
+			// why doesn't AttributeEditorFactory know about this? FIXME: upstream bug?
+			return super.createEditor(TaskAttribute.TYPE_LONG_RICH_TEXT, taskAttribute);
+		} else {
+			return super.createEditor(type, taskAttribute);
+		}
 	}
 }

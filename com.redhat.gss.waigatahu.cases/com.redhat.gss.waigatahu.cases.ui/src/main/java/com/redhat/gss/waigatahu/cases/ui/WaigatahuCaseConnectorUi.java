@@ -15,11 +15,14 @@ import org.eclipse.mylyn.tasks.ui.wizards.ITaskSearchPage;
 import com.redhat.gss.waigatahu.cases.core.CaseRepositoryConnector;
 import com.redhat.gss.waigatahu.cases.core.WaigatahuCaseCorePlugin;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactory;
+import com.redhat.gss.waigatahu.cases.data.CaseAttribute;
 import com.redhat.gss.waigatahu.cases.ui.attachment.CaseAttachmentPage;
+import com.redhat.gss.waigatahu.cases.ui.query.CaseQueryPage;
 
 public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 	private final String REPOSITORY_PAGE_TITLE = "REPOSITORY_PAGE_TITLE";
 	private final String REPOSITORY_PAGE_DESCRIPTION = "REPOSITORY_PAGE_DESCRIPTION";
+	private final String SEARCH_PAGE_DESCRIPTION = "SEARCH_PAGE_DESCRIPTION";
 	
 	private CaseRepositoryConnector connector;
 	
@@ -54,12 +57,11 @@ public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 
 	/* search */
 	public boolean hasSearchPage() {
-		//TODO
-		return false;
+		return true;
 	}
 
 	public ITaskSearchPage getSearchPage(TaskRepository repository, IStructuredSelection selection) {
-		return null;
+		return new CaseQueryPage(SEARCH_PAGE_DESCRIPTION, repository, null);
 	}
 
 	/* hyperlink highlighting
@@ -72,15 +74,15 @@ public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 	/* account management URLs */
 
 	public String getAccountCreationUrl(TaskRepository taskRepository) {
-		return null;
+		return connector.getClient(taskRepository).getAccountManagementUrl().toExternalForm();
 	}
 
 	public String getAccountManagementUrl(TaskRepository taskRepository) {
-		return null;
+		return connector.getClient(taskRepository).getUserProfileUrl().toExternalForm();
 	}
 	
 	/* case URLs */
 	public String getTaskHistoryUrl(TaskRepository taskRepository, ITask task) {
-		return null;
+		return task.getAttribute(CaseAttribute.WEB_URL);
 	}
 }

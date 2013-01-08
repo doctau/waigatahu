@@ -4,6 +4,7 @@
 	<extension point="org.eclipse.mylyn.tasks.ui.duplicateDetectors">
        <detector
              class="com.redhat.gss.waigatahu.cases.recommendation.DuplicateDetector"
+             kind="com.redhat.gss.waigatahu.cases"
              name="Case duplicate detector">
        </detector>
     </extension>

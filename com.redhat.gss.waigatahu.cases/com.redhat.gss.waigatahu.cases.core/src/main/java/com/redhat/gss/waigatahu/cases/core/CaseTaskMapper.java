@@ -4,6 +4,8 @@ import org.eclipse.mylyn.tasks.core.ITask;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskMapper;
 
+import com.redhat.gss.waigatahu.cases.data.CaseAttribute;
+
 // Maps TaskData to ITasks
 public class CaseTaskMapper extends TaskMapper {
 	private final CaseRepositoryConnector connector;
@@ -19,6 +21,7 @@ public class CaseTaskMapper extends TaskMapper {
 
 		// TODO: map custom things from taskData to task
 		//TaskAttribute.
+		task.setAttribute(CaseAttribute.WEB_URL, taskData.getRoot().getAttribute(CaseAttribute.WEB_URL).getValue());
 
 		
 		task.setUrl(connector.taskIdToCaseUrl(taskData.getTaskId()).getUrl());

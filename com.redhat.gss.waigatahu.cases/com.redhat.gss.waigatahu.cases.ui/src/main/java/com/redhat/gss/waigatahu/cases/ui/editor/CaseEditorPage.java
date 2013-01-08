@@ -65,9 +65,12 @@ public class CaseEditorPage extends AbstractTaskEditorPage {
 			public AbstractTaskEditorPart createPart() {
 				return new TaskEditorPeoplePart() {
 					protected List<String> getDisplayedAttributes() {
-						List<String> attrs = super.getDisplayedAttributes();
+						List<String> attrs = new ArrayList<String>();
 						attrs.add(CaseAttribute.USER_CONTACT);
+						attrs.add(TaskAttribute.USER_ASSIGNED);
+						attrs.add(TaskAttribute.USER_REPORTER);
 						attrs.add(CaseAttribute.USER_LAST_MODIFIER);
+						attrs.add(TaskAttribute.USER_CC);
 						return attrs;
 					}
 				};

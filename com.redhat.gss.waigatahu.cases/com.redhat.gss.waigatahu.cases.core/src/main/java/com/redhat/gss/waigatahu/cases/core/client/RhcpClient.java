@@ -1,6 +1,7 @@
 package com.redhat.gss.waigatahu.cases.core.client;
 
 import java.io.InputStream;
+import java.net.URL;
 import java.util.Collection;
 import java.util.List;
 
@@ -53,4 +54,10 @@ public interface RhcpClient {
 	List<String> getTypes();
 	List<Group> getGroups();
 	List<User> getUsers(String accountNumber);
+	
+
+	// other data
+	boolean isUserRedHat(String userId);
+	URL getAccountManagementUrl();
+	URL getUserProfileUrl();
 }

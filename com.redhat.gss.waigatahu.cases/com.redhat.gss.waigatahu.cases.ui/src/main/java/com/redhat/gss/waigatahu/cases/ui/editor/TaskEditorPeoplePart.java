@@ -57,8 +57,11 @@ public class TaskEditorPeoplePart extends AbstractTaskEditorPart {
 		layout.numColumns = 2;
 		peopleComposite.setLayout(layout);
 
+		TaskAttribute root = getTaskData().getRoot();
 		for (String attrName: getDisplayedAttributes()) {
-			addAttribute(peopleComposite, toolkit, getTaskData().getRoot().getMappedAttribute(attrName));
+			TaskAttribute attr = root.getMappedAttribute(attrName);
+			if (attr != null && attr.getMetaData().getKind() != null)
+				addAttribute(peopleComposite, toolkit, attr);
 		}
 
 		toolkit.paintBordersFor(peopleComposite);
