@@ -18,7 +18,7 @@
             anonymous="false"
             label="Red Hat Customer Portal"
             repositoryKind="com.redhat.gss.waigatahu.cases"
-            urlRepository="https://access.redhat.com/rs"/>
+            urlRepository="https://api.access.redhat.com/rs"/>
    </extension> 
    <extension
          point="org.eclipse.mylyn.tasks.ui.editors">

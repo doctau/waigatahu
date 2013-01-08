@@ -3,5 +3,48 @@
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.tasks.index.core_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.core_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.identity.core_1.0.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.identity_0.9.1.v20120412-0100.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.net_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.notifications.core_1.0.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.notifications.feed_1.0.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.notifications.ui_1.0.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.notifications_0.9.1.v20120412-0100.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.repositories.core_1.0.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.repositories.http.core_1.0.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.repositories.ui_1.0.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.repositories_0.9.1.v20120412-0100.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.screenshots_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.sdk.util_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.soap_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.team_0.9.1.v20120412-0100.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.ui_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.workbench_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.commons.xmlrpc_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.context.core_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.context.tasks.ui_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.context.ui_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.discovery.core_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.discovery.ui_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.monitor.core_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.monitor.ui_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.resources.ui_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.tasks.bugs_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.tasks.core_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.tasks.index.ui_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.tasks.search_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.tasks.ui_3.8.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.confluence.core_1.7.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.confluence.ui_1.7.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.core_1.7.2.v20120916-1200.jar" sourcepath="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.core.source_1.7.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.help.ui_1.7.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.mediawiki.core_1.7.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.mediawiki.ui_1.7.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.tasks.ui_1.7.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.textile.core_1.7.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.textile.ui_1.7.2.v20120916-1200.jar"/>
+	<classpathentry kind="lib" path="/home/jlivings/opt/jbdevstudio-6b2/studio/plugins/org.eclipse.mylyn.wikitext.ui_1.7.2.v20120916-1200.jar"/>
 	<classpathentry kind="output" path="target"/>
 </classpath>

@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: com.redhat.gss.waigatahu.generated
+Bundle-SymbolicName: com.redhat.gss.waigatahu.generated;singleton:=true
+Bundle-Version: 0.0.1.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Export-Package: com.redhat.gss.strata.model

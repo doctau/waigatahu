@@ -16,6 +16,11 @@ public class CaseAttributeMapper extends TaskAttributeMapper {
 		setValue(attribute, (value == null) ? "" : value);
 	}
 
+	public String getNullableStringValue(TaskAttribute attribute) {
+		String s = getValue(attribute);
+		return (s == null || s.isEmpty()) ? null : s;
+	}
+
 
 	public void addRepositoryPerson(TaskAttribute taskAttribute, IRepositoryPerson person) {
 		List<String> values1 = getValues(taskAttribute);

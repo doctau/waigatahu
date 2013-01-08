@@ -17,8 +17,7 @@ Import-Package: com.redhat.gss.strata.model,
  org.eclipse.mylyn.tasks.core,
  org.eclipse.mylyn.tasks.core.data,
  org.eclipse.mylyn.tasks.core.sync
-Export-Package: com.redhat.gss.strata.model,
- com.redhat.gss.waigatahu.cases.core,
+Export-Package: com.redhat.gss.waigatahu.cases.core,
  com.redhat.gss.waigatahu.cases.core.client,
  com.redhat.gss.waigatahu.cases.data
 Bundle-ClassPath: .

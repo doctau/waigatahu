@@ -24,8 +24,6 @@ public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 	private final String REPOSITORY_PAGE_DESCRIPTION = "REPOSITORY_PAGE_DESCRIPTION";
 	private final String SEARCH_PAGE_DESCRIPTION = "SEARCH_PAGE_DESCRIPTION";
 	
-	private CaseRepositoryConnector connector;
-	
 	public WaigatahuCaseConnectorUi() {
 		
 	}
@@ -74,11 +72,11 @@ public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 	/* account management URLs */
 
 	public String getAccountCreationUrl(TaskRepository taskRepository) {
-		return connector.getClient(taskRepository).getAccountManagementUrl().toExternalForm();
+		return getConnector().getClient(taskRepository).getAccountManagementUrl().toExternalForm();
 	}
 
 	public String getAccountManagementUrl(TaskRepository taskRepository) {
-		return connector.getClient(taskRepository).getUserProfileUrl().toExternalForm();
+		return getConnector().getClient(taskRepository).getUserProfileUrl().toExternalForm();
 	}
 	
 	/* case URLs */

@@ -29,6 +29,7 @@ import org.apache.commons.httpclient.Credentials;
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HostConfiguration;
 import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.NameValuePair;
 import org.apache.commons.httpclient.auth.AuthScope;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
@@ -114,8 +115,8 @@ public class RhcpClientImpl implements RhcpClient {
 	}
 
 	private static final String USER_AGENT = "Waigatahu 0.0.1";
-	private static final String VALIDATE_PATH = "/accounts";
-	private static final String ALL_OPEN_CASES_PATH = "/cases/";
+	private static final String GET_ACCOUNT_NUMBER = "/accounts";
+	private static final String ALL_OPEN_CASES_PATH = "/cases";
 	private static final String POST_CASE = "/cases";
 	private static final String ALL_CASE_ATTACHMENTS = "/attachments";
 	private static final String POST_CASE_ATTACHMENT = "/attachments";
@@ -153,7 +154,7 @@ public class RhcpClientImpl implements RhcpClient {
 	private final JAXBContext jaxbContext;
 
 	// cached values
-	Future<String> accountNumber = null;
+	private Id<Future<String>> accountNumber = new Id<Future<String>>();
 	private Id<Future<List<Product>>> products = new Id<Future<List<Product>>>();
 	private ConcurrentMap<String, Id<Future<List<String>>>> versions = new ConcurrentHashMap<String, Id<Future<List<String>>>>();
 	private Id<Future<List<String>>> severities = new Id<Future<List<String>>>();
@@ -182,6 +183,7 @@ public class RhcpClientImpl implements RhcpClient {
 		httpClient.setHttpConnectionManager(WebUtil.getConnectionManager());
 		httpClient.getParams().setCookiePolicy(CookiePolicy.RFC_2109);
 		WebUtil.configureHttpClient(httpClient, USER_AGENT);
+		httpClient.getParams().setParameter(HttpMethodParams.USER_AGENT, USER_AGENT);
 		return httpClient;
 	}
 	
@@ -314,55 +316,25 @@ public class RhcpClientImpl implements RhcpClient {
 
 
 	public void validateConnection(IProgressMonitor monitor) {
-		synchronized (this) {
-			if (accountNumber!= null && accountNumber.isDone())
-				accountNumber = null;
+		synchronized (accountNumber) {
+			if (accountNumber.value != null && accountNumber.value.isDone())
+				accountNumber.value = null;
 		}
 		getAccountNumber(monitor);
 	}
 	
-	public String getAccountNumber(final IProgressMonitor monitor) {
-		Future<String> an;
-		synchronized (this) {
-			if (accountNumber == null) {
-				RunnableFuture<String> rf =  new FutureTask<String>(new Callable<String>() {
-					public String call() throws Exception {
-						GetMethod method = runGetRequestPath(VALIDATE_PATH, monitor);
-						try {
-							switch (method.getStatusCode()) {
-							case HttpURLConnection.HTTP_OK:
-								try {
-									return method.getResponseBodyAsString();
-									/*InputStream is = method.getResponseBodyAsStream();
-								    Unmarshaller um = jaxbContext.createUnmarshaller();
-								    Account account = (Account) um.unmarshal(is);
-								    // FIXME: no data is set on it???
-								    return account.getNumber();*/
-								} catch (IOException e) {
-									throw new RuntimeException(e);
-								}/* catch (JAXBException e) {
-									throw new RuntimeException(e);
-								}*/
-							default:
-								throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
-							}
-						} finally {
-							WebUtil.releaseConnection(method, monitor);
-						}
-					}
-				});
-				accountNumber = rf;
-				rf.run();
+
+
+	public String getAccountNumber(IProgressMonitor monitor) {
+		return getData(this.accountNumber, GET_ACCOUNT_NUMBER, monitor, new Function1<HttpMethod, String>() {
+			public String apply(HttpMethod m) {
+				try {
+					return m.getResponseBodyAsString();
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
 			}
-			an = accountNumber;
-		}
-		try {
-			return an.get();
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e);
-		} catch (ExecutionException e) {
-			throw new RuntimeException(e);
-		}
+		});
 	}
 	
 	public String getContactName(IProgressMonitor monitor) {
@@ -633,18 +605,18 @@ public class RhcpClientImpl implements RhcpClient {
 	/* reference data */
 	public void updateData() {
 		synchronized (this) {
-			products = null;
-			types = null;
-			severities = null;
-			statuses = null;
-			groups = null;
+			products.value = null;
+			types.value = null;
+			severities.value = null;
+			statuses.value = null;
+			groups.value = null;
 			versions.clear();
 			users.clear();
 		}
 	}
 
 	public List<Product> getProducts() {
-		return getData(this.products, VALUES_PRODUCTS, new Function1<Object, List<Product>>() {
+		return getXmlData(this.products, VALUES_PRODUCTS, new NullProgressMonitor(), new Function1<Object, List<Product>>() {
 			public List<Product> apply(Object o) {
 				return ((Products)o).getProduct();
 			}
@@ -652,7 +624,7 @@ public class RhcpClientImpl implements RhcpClient {
 	}
 	
 	public List<Group> getGroups() {
-		return getData(this.groups, VALUES_GROUPS, new Function1<Object, List<Group>>() {
+		return getXmlData(this.groups, VALUES_GROUPS, new NullProgressMonitor(), new Function1<Object, List<Group>>() {
 			public List<Group> apply(Object o) {
 				return ((Groups)o).getGroup();
 			}
@@ -662,8 +634,12 @@ public class RhcpClientImpl implements RhcpClient {
 	public List<String> getVersions(final String product) {
 		String escProduct = product.replace(" ", "%20"); // FIXME this sucks, but URLEncoder turns spaces into +s
 
-		Id<Future<List<String>>> v = versions.putIfAbsent(product, new Id<Future<List<String>>>());
-		return getData(v, "/products/" + escProduct + "/versions", new Function1<Object, List<String>>() {
+		Id<Future<List<String>>> id = new Id<Future<List<String>>>();
+		Id<Future<List<String>>> v = versions.putIfAbsent(escProduct, id);
+		if (v == null)
+			v = id;
+
+		return getXmlData(v, "/products/" + escProduct + "/versions", new NullProgressMonitor(), new Function1<Object, List<String>>() {
 			public List<String> apply(Object o) {
 				return ((Versions)o).getVersion();
 			}
@@ -671,46 +647,65 @@ public class RhcpClientImpl implements RhcpClient {
 	}
 
 	public List<String> getTypes() {
-		return getData(this.types, VALUES_CASE_TYPES, VALUES_EXTRACTOR);
+		return getXmlData(this.types, VALUES_CASE_TYPES, new NullProgressMonitor(), VALUES_EXTRACTOR);
 	}
 	
 	public List<String> getSeverities() {
-		return getData(this.severities, VALUES_SEVERITIES, VALUES_EXTRACTOR);
+		return getXmlData(this.severities, VALUES_SEVERITIES, new NullProgressMonitor(), VALUES_EXTRACTOR);
 	}
 	
 	public List<String> getStatuses() {
-		return getData(this.statuses, VALUES_STATUSES, VALUES_EXTRACTOR);
+		return getXmlData(this.statuses, VALUES_STATUSES, new NullProgressMonitor(), VALUES_EXTRACTOR);
 	}
 
 	
 	public List<User> getUsers(final String accountNumber) {
-		Id<Future<List<User>>> v = users.putIfAbsent(accountNumber, new Id<Future<List<User>>>());
-		return getData(v, ACCOUNT_USERS_PREFIX + accountNumber + ACCOUNT_USERS_SUFFIX, new Function1<Object, List<User>>() {
+		Id<Future<List<User>>> id = new Id<Future<List<User>>>();
+		Id<Future<List<User>>> v = users.putIfAbsent(accountNumber, id);
+		if (v == null)
+			v = id;
+		return getXmlData(v, ACCOUNT_USERS_PREFIX + accountNumber + ACCOUNT_USERS_SUFFIX,
+				new NullProgressMonitor(), new Function1<Object, List<User>>() {
 			public List<User> apply(Object o) {
 				return ((Users)o).getUser();
 			}
 		});
 	}
-	
-	public <A> A getData(Id<Future<A>> holder, final String path, final Function1<Object, A> mapper) {
+
+	protected <A> A getXmlData(Id<Future<A>> holder, final String path,
+			final IProgressMonitor monitor, final Function1<Object, A> mapper) {
+		return getData(holder, path, monitor, new Function1<HttpMethod, A>() {
+			public A apply(HttpMethod method) {
+				try {
+					InputStream is = method.getResponseBodyAsStream();
+				    Unmarshaller um = jaxbContext.createUnmarshaller();
+				    return mapper.apply(um.unmarshal(is));
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				} catch (JAXBException e) {
+					String ss = null;
+					try {
+						ss = method.getResponseBodyAsString();
+					} catch (IOException ex) {
+						ss = ss;
+					}
+					throw new RuntimeException(e);
+				}
+			}
+		});
+	}
+
+	protected <A> A getData(Id<Future<A>> holder, final String path,
+			final IProgressMonitor monitor, final Function1<HttpMethod, A> mapper) {
 		synchronized (holder) {
 			if (holder.value == null) {
 				RunnableFuture<A> rf =  new FutureTask<A>(new Callable<A>() {
 					public A call() throws Exception {
-						IProgressMonitor monitor = new NullProgressMonitor();
 						GetMethod method = runGetRequestPath(path, monitor);
 						try {
 							switch (method.getStatusCode()) {
 							case HttpURLConnection.HTTP_OK:
-								try {
-									InputStream is = method.getResponseBodyAsStream();
-								    Unmarshaller um = jaxbContext.createUnmarshaller();
-								    return mapper.apply(um.unmarshal(is));
-								} catch (IOException e) {
-									throw new RuntimeException(e);
-								} catch (JAXBException e) {
-									throw new RuntimeException(e);
-								}
+								return mapper.apply(method);
 							default:
 								throw new RuntimeException("unexpected result code: " + method.getStatusCode() + " from " + method.getPath());
 							}

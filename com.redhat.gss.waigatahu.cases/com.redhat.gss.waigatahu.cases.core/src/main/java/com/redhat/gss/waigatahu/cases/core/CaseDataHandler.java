@@ -3,6 +3,7 @@ package com.redhat.gss.waigatahu.cases.core;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -108,7 +109,8 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			Case createdCase = client.createCase(tempCase, monitor);
 			updateTaskData(client, repository, taskData, createdCase);
 
-			return new RepositoryResponse(ResponseKind.TASK_CREATED, taskData.getTaskId());
+			String taskId = connector.getTaskIdFromTaskUrl(createdCase.getUri());
+			return new RepositoryResponse(ResponseKind.TASK_CREATED, taskId);
 		} catch (CoreException e) {
 			throw new RuntimeException(e);
 		}
@@ -166,14 +168,8 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		try {
 			myMonitor.beginTask("Running query", IProgressMonitor.UNKNOWN);
 			RhcpClient client = connector.getClient(repository);
-			
-			CaseQuery cquery = new CaseQuery();
-			cquery.setClosed(query.getAttribute(QueryAttribute.CLOSED));
-			cquery.setCaseGroup(query.getAttribute(QueryAttribute.CASE_GROUP));
-			cquery.setSearchTerms(query.getAttribute(QueryAttribute.SEARCH_TERMS));
-			//FIXME: parse the string// cquery.setStartDate(query.getAttribute(QueryAttribute.START_DATE));
-			//cquery.setEndDate(query.getAttribute(QueryAttribute.END_DATE));
-			cquery.setQueryUseTime(Boolean.parseBoolean(query.getAttribute(QueryAttribute.QUERY_USE_TIME)));
+
+			CaseQuery cquery = mapQuery(query);
 			Collection<Case> cases = client.queryCases(cquery, monitor);
 
 			for (Case c: cases) {
@@ -190,8 +186,17 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		}
 		return Status.OK_STATUS;
 	}
-	
-	
+
+	private CaseQuery mapQuery(IRepositoryQuery query) {
+		CaseQuery cquery = new CaseQuery();
+		cquery.setClosed(query.getAttribute(QueryAttribute.CLOSED));
+		cquery.setCaseGroup(query.getAttribute(QueryAttribute.CASE_GROUP));
+		cquery.setSearchTerms(query.getAttribute(QueryAttribute.SEARCH_TERMS));
+		cquery.setStartDate(QueryAttribute.Convert.toDate(query.getAttribute(QueryAttribute.START_DATE)));
+		cquery.setEndDate(QueryAttribute.Convert.toDate(query.getAttribute(QueryAttribute.END_DATE)));
+		cquery.setQueryUseTime(Boolean.parseBoolean(query.getAttribute(QueryAttribute.QUERY_USE_TIME)));
+		return cquery;
+	}
 
 	private TaskData downloadTaskData(RhcpClient client, TaskRepository repository,
 			CaseId caseId, IProgressMonitor monitor)
@@ -377,23 +382,24 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	private void updateTaskData(RhcpClient client, TaskRepository repository, TaskData taskData, Case supportCase) {
 		TaskAttribute root = taskData.getRoot();
+		CaseAttributeMapper mapper = getAttributeMapper(repository);
 
 		// core data
-		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.TASK_KEY), supportCase.getCaseNumber());
-		getAttributeMapper(repository).setValue(root.getAttribute(CaseAttribute.CASE_URI), supportCase.getUri());
-		getAttributeMapper(repository).setDateValue(root.getAttribute(TaskAttribute.DATE_CREATION), supportCase.getCreatedDate().getTime());
-		getAttributeMapper(repository).setDateValue(root.getAttribute(TaskAttribute.DATE_MODIFICATION), supportCase.getLastModifiedDate().getTime());
-		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.SUMMARY), supportCase.getSummary());
-		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.STATUS), supportCase.getStatus());
-		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.SEVERITY), supportCase.getSeverity());
+		mapper.setValue(root.getAttribute(TaskAttribute.TASK_KEY), supportCase.getCaseNumber());
+		mapper.setValue(root.getAttribute(CaseAttribute.CASE_URI), supportCase.getUri());
+		mapper.setDateValue(root.getAttribute(TaskAttribute.DATE_CREATION), supportCase.getCreatedDate().getTime());
+		mapper.setDateValue(root.getAttribute(TaskAttribute.DATE_MODIFICATION), supportCase.getLastModifiedDate().getTime());
+		mapper.setValue(root.getAttribute(TaskAttribute.SUMMARY), supportCase.getSummary());
+		mapper.setValue(root.getAttribute(TaskAttribute.STATUS), supportCase.getStatus());
+		mapper.setValue(root.getAttribute(TaskAttribute.SEVERITY), supportCase.getSeverity());
 
 		
 		// custom data
-		getAttributeMapper(repository).setBooleanValue(root.getAttribute(CaseAttribute.CLOSED), supportCase.getClosed());
-		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(CaseAttribute.CASE_TYPE), supportCase.getType());
-		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(CaseAttribute.ALTERNATE_ID), supportCase.getAlternateId());
-		getAttributeMapper(repository).setValue(root.getAttribute(CaseAttribute.ACCOUNT_NUMBER), supportCase.getAccountNumber());
-		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(CaseAttribute.WEB_URL), supportCase.getViewUri());
+		mapper.setBooleanValue(root.getAttribute(CaseAttribute.CLOSED), supportCase.getClosed());
+		mapper.setNullableStringValue(root.getAttribute(CaseAttribute.CASE_TYPE), supportCase.getType());
+		mapper.setNullableStringValue(root.getAttribute(CaseAttribute.ALTERNATE_ID), supportCase.getAlternateId());
+		mapper.setValue(root.getAttribute(CaseAttribute.ACCOUNT_NUMBER), supportCase.getAccountNumber());
+		mapper.setNullableStringValue(root.getAttribute(CaseAttribute.WEB_URL), supportCase.getViewUri());
 
 
 		// users
@@ -405,7 +411,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		IRepositoryPerson contactPerson = repository.createPerson((supportCase.getContactSsoUsername() != null) ? supportCase.getContactSsoUsername() : supportCase.getContactName());
 		contactPerson.setName(supportCase.getContactName());
 		TaskAttribute userContactAttr = root.getAttribute(CaseAttribute.USER_CONTACT);
-		getAttributeMapper(repository).setRepositoryPerson(userContactAttr, contactPerson);
+		mapper.setRepositoryPerson(userContactAttr, contactPerson);
 		userContactAttr.putOption(contactPerson.getName(), contactPerson.getPersonId());
 		
 		// CC'd users
@@ -416,13 +422,13 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 				//add CC'd users
 				IRepositoryPerson ccPerson = repository.createPerson(l.getSsoUsername());
 				ccPerson.setName(l.getValue());
-				getAttributeMapper(repository).addRepositoryPerson(usersCcAttr, ccPerson);
+				mapper.addRepositoryPerson(usersCcAttr, ccPerson);
 			}
 		}
 
 		
 		// product and version
-		getAttributeMapper(repository).setValue(root.getAttribute(TaskAttribute.PRODUCT), supportCase.getProduct());
+		mapper.setValue(root.getAttribute(TaskAttribute.PRODUCT), supportCase.getProduct());
 		if (supportCase.getProduct() != null) {
 			root.getAttribute(TaskAttribute.VERSION).clearOptions();
 			for (String v: client.getVersions(supportCase.getProduct())) {
@@ -432,7 +438,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			// no product but there was a version...
 			//FIXME: report the error?
 		}
-		getAttributeMapper(repository).setNullableStringValue(root.getAttribute(TaskAttribute.VERSION), supportCase.getVersion());
+		mapper.setNullableStringValue(root.getAttribute(TaskAttribute.VERSION), supportCase.getVersion());
 		/* FIXME: TODO:
 		 * component
 		 * id
@@ -444,7 +450,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		
 		// case groups
 		TaskAttribute folderAttr = root.getAttribute(CaseAttribute.FOLDER);
-		getAttributeMapper(repository).setNullableStringValue(folderAttr, supportCase.getFolderNumber());
+		mapper.setNullableStringValue(folderAttr, supportCase.getFolderNumber());
 		folderAttr.putOption("", ""); // default is none
 		for (Group p: client.getGroups()) {
 			folderAttr.putOption(p.getName(), p.getNumber());
@@ -458,12 +464,12 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			if (c == comments.get(0)) {
 				root.getAttribute(TaskAttribute.DESCRIPTION).setValue(c.getText());
 			} else {
-				CommentMapper mapper = CommentMapper.createFrom(repository, c);  // Create a new one each time, to be safe.
+				CommentMapper cmapper = CommentMapper.createFrom(repository, c);  // Create a new one each time, to be safe.
 				//mapper.setNumber(count);
 
 			    // Create, in the task data object, a new attribute that will hold this comment.
 				TaskAttribute attribute = root.createAttribute(TaskAttribute.PREFIX_COMMENT + count);
-				mapper.applyTo(attribute);
+				cmapper.applyTo(attribute);
 			}
 			count++;
 		}
@@ -472,43 +478,56 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 	private void bindUserAttribute(RhcpClient client,
 			TaskRepository repository, TaskAttribute attr,
 			String userId) {
+		CaseAttributeMapper mapper = getAttributeMapper(repository);
+
 		IRepositoryPerson person = repository.createPerson(userId);
-		getAttributeMapper(repository).setRepositoryPerson(attr, person);
+		mapper.setRepositoryPerson(attr, person);
+
 		TaskAttribute isRedhatAttr = new TaskAttribute(attr, PersonAttribute.IS_REDHAT);
-		getAttributeMapper(repository).setBooleanValue(isRedhatAttr, client.isUserRedHat(userId));
+		mapper.setBooleanValue(isRedhatAttr, client.isUserRedHat(userId));
 	}
 	
 	private Case createCaseFromTaskData(TaskRepository repository, TaskData taskData, IProgressMonitor monitor) throws CoreException {
+		CaseAttributeMapper mapper = getAttributeMapper(repository);
 		TaskAttribute root = taskData.getRoot();
 
 		Case supportCase = new Case();
-		TaskAttribute keyAttr = root.getAttribute(TaskAttribute.TASK_KEY);
-		if (!keyAttr.getValues().isEmpty())
-			supportCase.setCaseNumber(keyAttr.getValue());
-		
-		String summary = root.getAttribute(TaskAttribute.SUMMARY).getValue();
+		supportCase.setCaseNumber(mapper.getNullableStringValue(root.getAttribute(TaskAttribute.TASK_KEY)));
+
+		String summary = mapper.getValue(root.getAttribute(TaskAttribute.SUMMARY));
 		if (summary.isEmpty())
 			throw new CoreException(new Status(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, "Summary is missing"));
 		supportCase.setSummary(summary);
 		
-		String description = root.getAttribute(TaskAttribute.DESCRIPTION).getValue();
+		String description = mapper.getValue(root.getAttribute(TaskAttribute.DESCRIPTION));
 		if (description.isEmpty())
 			throw new CoreException(new Status(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, "Description is missing"));
 		supportCase.setDescription(description);
 
-		supportCase.setStatus(root.getAttribute(TaskAttribute.STATUS).getValue());
-		//FIXME: are these required?
-		supportCase.setSeverity(root.getAttribute(TaskAttribute.SEVERITY).getValue());
-		supportCase.setProduct(root.getAttribute(TaskAttribute.PRODUCT).getValue());
+		String status = mapper.getValue(root.getAttribute(TaskAttribute.STATUS));
+		supportCase.setStatus(status.isEmpty() ? null : status);
 
-		String version = root.getAttribute(TaskAttribute.VERSION).getValue();
+		String product = mapper.getValue(root.getAttribute(TaskAttribute.PRODUCT));
+		if (product.isEmpty())
+			throw new CoreException(new Status(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, "Product is missing"));
+		supportCase.setProduct(product);
+
+		String version = mapper.getValue(root.getAttribute(TaskAttribute.VERSION));
 		if (version.isEmpty())
 			throw new CoreException(new Status(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, "Version is missing"));
 		supportCase.setVersion(version);
 
-		supportCase.setContactName(root.getAttribute(TaskAttribute.USER_REPORTER).getValue());
-		supportCase.setType(root.getAttribute(CaseAttribute.CASE_TYPE).getValue());
-		supportCase.setAlternateId(root.getAttribute(CaseAttribute.ALTERNATE_ID).getValue());
+
+		String customerContact = mapper.getValue(root.getAttribute(CaseAttribute.USER_CONTACT));
+		if (customerContact.isEmpty())
+			throw new CoreException(new Status(IStatus.ERROR, WaigatahuCaseCorePlugin.CONNECTOR_KIND, "Customer contact is missing"));
+		supportCase.setContactName(customerContact);
+
+		//FIXME: is this required?
+		supportCase.setSeverity(mapper.getNullableStringValue(root.getAttribute(TaskAttribute.SEVERITY)));
+
+		supportCase.setType(mapper.getNullableStringValue(root.getAttribute(CaseAttribute.CASE_TYPE)));
+		supportCase.setAlternateId(mapper.getNullableStringValue(root.getAttribute(CaseAttribute.ALTERNATE_ID)));
 		return supportCase;
 	}
 

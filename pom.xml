@@ -65,6 +65,7 @@
 	</build>
 
 	<modules>
+		<module>com.redhat.gss.waigatahu.generated</module>
 		<module>com.redhat.gss.waigatahu.feature</module>
 		<module>com.redhat.gss.waigatahu.updatesite</module>
 		<module>com.redhat.gss.waigatahu.cases</module>
