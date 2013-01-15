@@ -3,9 +3,7 @@ package com.redhat.gss.waigatahu.cases.core;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -108,6 +106,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			Case tempCase = createCaseFromTaskData(repository, taskData, monitor);
 			Case createdCase = client.createCase(tempCase, monitor);
 			updateTaskData(client, repository, taskData, createdCase);
+			postCaseCreation(taskData);
 
 			String taskId = connector.getTaskIdFromTaskUrl(createdCase.getUri());
 			return new RepositoryResponse(ResponseKind.TASK_CREATED, taskId);
@@ -218,10 +217,16 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 				TaskAttribute.TYPE_LONG_RICH_TEXT, "New comment",
 				CaseAttribute.KIND_HIDDEN, false);
 		updateTaskData(client, repository, taskData, supportCase);
+		postCaseCreation(taskData);
 
 		// attachments are not loaded yet
 		taskData.setPartial(true);
 		return taskData;
+	}
+
+	private void postCaseCreation(TaskData taskData) {
+		//shouldn't be allowed to modify later
+		taskData.getRoot().getAttribute(TaskAttribute.DESCRIPTION).getMetaData().setReadOnly(true);
 	}
 
 
@@ -231,12 +236,14 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		List<Attachment> currentAttachments = client.getCaseAttachments(caseId, monitor);
 		
 		TaskAttribute root = data.getRoot();
+		CaseAttributeMapper mapper = getAttributeMapper(repository);
 
 		// from uuid to the attribute key
 		Map<String, String> oldAttachments = new HashMap<String,String>();
-		Set<TaskAttribute> attachmentAttributes = getPrefixedAttributes(root, TaskAttribute.PREFIX_ATTACHMENT);
+		List<TaskAttribute> attachmentAttributes = mapper.getAttributesByType(data, TaskAttribute.TYPE_ATTACHMENT);
+
 		for (TaskAttribute ta: attachmentAttributes) {
-			String uuid = ta.getAttribute(TaskAttribute.ATTACHMENT_ID).getValue();
+			String uuid = mapper.getValue(ta.getAttribute(TaskAttribute.ATTACHMENT_ID));
 			String key = ta.getId();
 			oldAttachments.put(uuid, key);
 		}
@@ -253,7 +260,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			}
 		}
 
-		//remove non-existant attachments
+		//remove non-existent attachments
 		for (String k: oldAttachments.values()) {
 			root.removeAttribute(k);
 		}
@@ -261,15 +268,15 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		//update keptAttachments (may not actually be changed)
 		for (Entry<String, Attachment> e: keptAttachments.entrySet()) {
 			TaskAttribute attr = root.getAttribute(e.getKey());
-			TaskAttachmentMapper mapper = CaseAttachmentMapper.createFrom(repository, e.getValue());
-			mapper.applyTo(attr);
+			TaskAttachmentMapper amapper = CaseAttachmentMapper.createFrom(repository, e.getValue());
+			amapper.applyTo(attr);
 		}
-		
+
 		//add newAttachments
 		for (Attachment a: newAttachments) {
 			TaskAttribute attr = root.createAttribute(TaskAttribute.PREFIX_ATTACHMENT + a.getUuid());
-			TaskAttachmentMapper mapper = CaseAttachmentMapper.createFrom(repository, a);
-			mapper.applyTo(attr);
+			TaskAttachmentMapper amapper = CaseAttachmentMapper.createFrom(repository, a);
+			amapper.applyTo(attr);
 		}
 	}
 
@@ -413,7 +420,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		TaskAttribute userContactAttr = root.getAttribute(CaseAttribute.USER_CONTACT);
 		mapper.setRepositoryPerson(userContactAttr, contactPerson);
 		userContactAttr.putOption(contactPerson.getName(), contactPerson.getPersonId());
-		
+
 		// CC'd users
 		TaskAttribute usersCcAttr = root.getAttribute(TaskAttribute.USER_CC);
 		NotifiedUsers notifiedUsers = supportCase.getNotifiedUsers();
@@ -543,15 +550,5 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
         metaData.setLabel(label);
         metaData.setReadOnly(readOnly);
         return attr;
-	}
-	
-	private Set<TaskAttribute> getPrefixedAttributes(TaskAttribute root,
-			String prefix) {
-		Set<TaskAttribute> tas = new HashSet<TaskAttribute>();
-		for (Entry<String, TaskAttribute> e: root.getAttributes().entrySet()) {
-			if (e.getKey().startsWith(prefix))
-				tas.add(e.getValue());
-		}
-		return tas;
 	}
 }
