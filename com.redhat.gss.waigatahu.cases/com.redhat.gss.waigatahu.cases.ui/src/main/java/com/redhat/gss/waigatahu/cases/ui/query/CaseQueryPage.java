@@ -31,6 +31,11 @@ public class CaseQueryPage extends AbstractRepositoryQueryPage2 {
 	}
 
 	protected void createPageContent(SectionComposite parent) {
+		createOpenControls(parent);
+		createDateControls(parent);
+	}
+
+	private void createOpenControls(SectionComposite parent) {
 		Composite group = new Composite(parent.getContent(), SWT.NONE);
 		GridLayout layout = new GridLayout(1, false);
 		layout.marginWidth = 0;
@@ -44,27 +49,33 @@ public class CaseQueryPage extends AbstractRepositoryQueryPage2 {
 		allCases = new Button(group, SWT.RADIO);
 		allCases.setText("All Cases");
 		allCases.setVisible(true);
+	}
+
+	private void createDateControls(SectionComposite parent) {
+		Composite group = new Composite(parent.getContent(), SWT.NONE);
+		GridLayout layout = new GridLayout(1, false);
+		layout.marginWidth = 0;
+		layout.marginHeight = 0;
+		group.setLayout(layout);
 		
-		startDate = new DatePicker(parent, SWT.NONE, "START_DATE", false, 0);
+		startDate = new DatePicker(group, SWT.NONE, DatePicker.LABEL_CHOOSE, false, 0);
 		startDate.setVisible(true);
 		
-		endDate = new DatePicker(parent, SWT.NONE, "START_DATE", false, 0);
+		endDate = new DatePicker(group, SWT.NONE, DatePicker.LABEL_CHOOSE, false, 0);
 		endDate.setVisible(true);
-		
-		
 	}
 
 	protected void doRefreshControls() {
-		// TODO Auto-generated method stub
-		
+		// TODO update any severity/etc fields
 	}
 
 	protected boolean hasRepositoryConfiguration() {
-		// TODO Auto-generated method stub
-		return false;
+		return true;
 	}
 
 	protected boolean restoreState(IRepositoryQuery query) {
+		setQueryTitle(query.getSummary());
+
 		String closed = query.getAttribute(QueryAttribute.CLOSED);
 		if (closed == null)
 			allCases.setSelection(true);
@@ -89,14 +100,17 @@ public class CaseQueryPage extends AbstractRepositoryQueryPage2 {
 			endDate.setDate(ecal);
 		}
 		
-		query.getAttribute(QueryAttribute.CASE_GROUP);
+		/*query.getAttribute(QueryAttribute.CASE_GROUP);
 		query.getAttribute(QueryAttribute.SEARCH_TERMS);
-		query.getAttribute(QueryAttribute.QUERY_USE_TIME);
+		query.getAttribute(QueryAttribute.QUERY_USE_TIME);*/
 		
 		return true;
 	}
 
 	public void applyTo(IRepositoryQuery query) {
+		//TODO: query.setUrl(getQueryUrl(getTaskRepository().getRepositoryUrl()));
+		query.setSummary(getQueryTitle());
+		
 		if (openCases.getSelection()) {
 			query.setAttribute(QueryAttribute.CLOSED, "false");
 		} else if (allCases.getSelection()) {
