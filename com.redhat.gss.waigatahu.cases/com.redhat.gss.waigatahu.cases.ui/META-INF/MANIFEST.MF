@@ -24,3 +24,7 @@ Import-Package: org.eclipse.mylyn.commons.core,
  org.eclipse.ui.forms.editor,
  org.eclipse.ui.forms.events,
  org.eclipse.ui.forms.widgets
+Export-Package: com.redhat.gss.waigatahu.cases.ui,
+ com.redhat.gss.waigatahu.cases.ui.attachment,
+ com.redhat.gss.waigatahu.cases.ui.editor,
+ com.redhat.gss.waigatahu.cases.ui.query

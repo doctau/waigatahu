@@ -10,4 +10,17 @@
 	</parent>
 	<artifactId>com.redhat.gss.waigatahu.updatesite</artifactId>
 	<packaging>eclipse-update-site</packaging>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-p2-repository-plugin</artifactId>
+				<version>${tycho-version}</version>
+				<configuration>
+					<includeAllDependencies>true</includeAllDependencies>
+					<createArtifactRepository>true</createArtifactRepository>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 </project>

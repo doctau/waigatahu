@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <feature url="features/com.redhat.gss.waigatahu.feature_0.0.1.qualifier.jar" id="com.redhat.gss.waigatahu.feature" version="0.0.1.qualifier"/>
+   <feature url="features/com.redhat.gss.waigatahu.feature_0.0.1.jar" id="com.redhat.gss.waigatahu.feature" version="0.0.1"/>
 </site>
