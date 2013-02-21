@@ -5,7 +5,8 @@ Bundle-SymbolicName: com.redhat.gss.waigatahu.cases.core;singleton:=true
 Bundle-Version: 0.0.1.qualifier
 Bundle-Activator: com.redhat.gss.waigatahu.cases.core.Activator
 Require-Bundle: org.eclipse.core.runtime,
- org.apache.commons.httpclient
+ org.apache.commons.httpclient,
+ com.redhat.gss.waigatahu.common
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Import-Package: com.redhat.gss.strata.model,
@@ -20,6 +21,5 @@ Import-Package: com.redhat.gss.strata.model,
 Export-Package: com.redhat.gss.waigatahu.cases.core,
  com.redhat.gss.waigatahu.cases.core.client,
  com.redhat.gss.waigatahu.cases.data,
- com.redhat.gss.waigatahu.cases.recommendation,
- com.redhat.gss.waigatahu.cases.util
+ com.redhat.gss.waigatahu.cases.recommendation
 Bundle-ClassPath: .

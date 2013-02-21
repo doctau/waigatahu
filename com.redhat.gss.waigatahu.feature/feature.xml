@@ -31,6 +31,20 @@
          unpack="false"/>
 
    <plugin
+         id="com.redhat.gss.waigatahu.diagnostics.core"
+         download-size="0"
+         install-size="0"
+         version="0.0.1"
+         unpack="false"/>
+
+   <plugin
+         id="com.redhat.gss.waigatahu.diagnostics.ui"
+         download-size="0"
+         install-size="0"
+         version="0.0.1"
+         unpack="false"/>
+
+   <plugin
          id="com.redhat.gss.waigatahu.generated"
          download-size="0"
          install-size="0"

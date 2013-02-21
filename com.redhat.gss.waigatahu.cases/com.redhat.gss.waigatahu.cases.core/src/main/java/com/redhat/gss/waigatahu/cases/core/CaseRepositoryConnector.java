@@ -17,10 +17,10 @@ import org.eclipse.mylyn.tasks.core.data.TaskData;
 import org.eclipse.mylyn.tasks.core.data.TaskDataCollector;
 import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
 
-import com.redhat.gss.waigatahu.cases.core.client.LoginException;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactory;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactoryImpl;
+import com.redhat.gss.waigatahu.common.client.LoginException;
 
 public class CaseRepositoryConnector extends AbstractRepositoryConnector implements RhcpClientFactory {
 	private static final String LABEL = "Red Hat Customer Portal";

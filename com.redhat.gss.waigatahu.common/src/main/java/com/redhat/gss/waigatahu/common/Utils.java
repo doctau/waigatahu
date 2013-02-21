@@ -1,4 +1,4 @@
-package com.redhat.gss.waigatahu.cases.util;
+package com.redhat.gss.waigatahu.common;
 
 public class Utils {
 	public static String padStringLeft(int n, char c, String s) {

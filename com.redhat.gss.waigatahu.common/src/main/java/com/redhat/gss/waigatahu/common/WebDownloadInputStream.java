@@ -1,4 +1,4 @@
-package com.redhat.gss.waigatahu.cases.util;
+package com.redhat.gss.waigatahu.common;
 
 import java.io.FilterInputStream;
 import java.io.IOException;

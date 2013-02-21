@@ -25,14 +25,8 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 
-import org.apache.commons.httpclient.Credentials;
-import org.apache.commons.httpclient.Header;
-import org.apache.commons.httpclient.HostConfiguration;
-import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.NameValuePair;
-import org.apache.commons.httpclient.auth.AuthScope;
-import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.methods.ByteArrayRequestEntity;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
@@ -69,24 +63,14 @@ import com.redhat.gss.strata.model.Products;
 import com.redhat.gss.strata.model.User;
 import com.redhat.gss.strata.model.Users;
 import com.redhat.gss.strata.model.Values;
-import com.redhat.gss.strata.model.Values.Value;
 import com.redhat.gss.strata.model.Versions;
 import com.redhat.gss.waigatahu.cases.core.CaseId;
-import com.redhat.gss.waigatahu.cases.util.Function1;
-import com.redhat.gss.waigatahu.cases.util.Id;
-import com.redhat.gss.waigatahu.cases.util.WebDownloadInputStream;
+import com.redhat.gss.waigatahu.common.Function1;
+import com.redhat.gss.waigatahu.common.Id;
+import com.redhat.gss.waigatahu.common.WebDownloadInputStream;
+import com.redhat.gss.waigatahu.common.client.CustomerPortalClient;
 
 public class RhcpClientImpl implements RhcpClient {
-	private static Function1<Object, List<String>> VALUES_EXTRACTOR = new Function1<Object, List<String>>() {
-		public List<String> apply(Object o) {
-		    List<String> vs = new ArrayList<String>();
-		    for (Value v: ((Values)o).getValue()) {
-		    	vs.add(v.getName());
-		    }
-		    return vs;
-		}
-	};
-
 	private static class AttachmentPartSource implements PartSource {
 		private final AbstractTaskAttachmentSource source;
 		private final IProgressMonitor monitor;
@@ -113,8 +97,6 @@ public class RhcpClientImpl implements RhcpClient {
 			}
 		}
 	}
-
-	private static final String USER_AGENT = "Waigatahu 0.0.1";
 	private static final String GET_ACCOUNT_NUMBER = "/accounts";
 	private static final String ALL_OPEN_CASES_PATH = "/cases";
 	private static final String POST_CASE = "/cases";
@@ -128,9 +110,6 @@ public class RhcpClientImpl implements RhcpClient {
 	private static final String VALUES_CASE_TYPES = "/values/case/types";
 	private static final String ACCOUNT_USERS_SUFFIX = "/users";
 	private static final String ACCOUNT_USERS_PREFIX = "/account/";
-
-	private static final Header ACCEPT_XML_HEADER = new Header("Accept", "application/xml");
-	private static final Header CONTENT_TYPE_XML_HEADER = new Header("Content-Type", "application/xml");
 
 	private static final Class<?>[] XML_CLASSES = new Class[] {
 		Account.class,
@@ -152,6 +131,7 @@ public class RhcpClientImpl implements RhcpClient {
 
 	private final TaskRepository repository;
 	private final JAXBContext jaxbContext;
+	private final CustomerPortalClient portal;
 
 	// cached values
 	private Id<Future<String>> accountNumber = new Id<Future<String>>();
@@ -165,6 +145,7 @@ public class RhcpClientImpl implements RhcpClient {
 
 	public RhcpClientImpl(TaskRepository repository) {
 		this.repository = repository;
+		this.portal = new CustomerPortalClient();
 
 		try {
 			this.jaxbContext = JAXBContext.newInstance(XML_CLASSES);
@@ -176,142 +157,32 @@ public class RhcpClientImpl implements RhcpClient {
 	public void shutdown() {
 		//FIXME: do anything here?
 	}
-	
-
-	protected HttpClient createHttpClient() {
-		HttpClient httpClient = new HttpClient();
-		httpClient.setHttpConnectionManager(WebUtil.getConnectionManager());
-		httpClient.getParams().setCookiePolicy(CookiePolicy.RFC_2109);
-		WebUtil.configureHttpClient(httpClient, USER_AGENT);
-		httpClient.getParams().setParameter(HttpMethodParams.USER_AGENT, USER_AGENT);
-		return httpClient;
-	}
-	
-	protected void setupClientAuthentication(HttpClient httpClient, AbstractWebLocation location,
-			IProgressMonitor monitor) {
-		String repositoryUrl = location.getUrl();
-
-		AuthenticationCredentials credentials = location.getCredentials(AuthenticationType.REPOSITORY);
-		AuthScope authScope = new AuthScope(WebUtil.getHost(repositoryUrl), WebUtil.getPort(repositoryUrl),
-				null, AuthScope.ANY_SCHEME);
-		Credentials httpCredentials = WebUtil.getHttpClientCredentials(credentials,
-				WebUtil.getHost(repositoryUrl));
-		httpClient.getState().setCredentials(authScope, httpCredentials);
-	}
 
 	public GetMethod runGetRequestPath(String restPath, IProgressMonitor monitor) {
 		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
-		return runGetRequestInternal(location.getUrl() + restPath, location, monitor);
+		return portal.runGetRequest(location.getUrl() + restPath, location, monitor);
 	}
 	public GetMethod runGetRequestUrl(String url, IProgressMonitor monitor) {
 		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
-		return runGetRequestInternal(url, location, monitor);
-	}
-	private GetMethod runGetRequestInternal(String url, AbstractWebLocation location, IProgressMonitor monitor) {
-		HttpClient httpClient = createHttpClient();
-		setupClientAuthentication(httpClient, location, monitor);
-
-		HostConfiguration hostConfiguration = WebUtil.createHostConfiguration(httpClient, location, monitor);
-		GetMethod method = new GetMethod(WebUtil.getRequestPath(url));
-		method.addRequestHeader(ACCEPT_XML_HEADER);
-		boolean okay = false;
-		try {
-			int status = WebUtil.execute(httpClient, hostConfiguration, method, monitor);
-
-			switch (status) {
-			case HttpURLConnection.HTTP_UNAUTHORIZED:
-			case HttpURLConnection.HTTP_FORBIDDEN:
-				throw new LoginException();
-			default:
-				okay = true;
-				return method;
-			}
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		} finally {
-			if (!okay) {
-				WebUtil.releaseConnection(method, monitor);
-			}
-		}
+		return portal.runGetRequest(url, location, monitor);
 	}
 
 	public PutMethod runPutRequestPath(String restPath, IProgressMonitor monitor, RequestEntity re) {
 		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
-		return runPutRequestInternal(location.getUrl() + restPath, location, monitor, re);
+		return portal.runPutRequest(location.getUrl() + restPath, location, monitor, re);
 	}
 	public PutMethod runPutRequestUrl(String url, IProgressMonitor monitor, RequestEntity re) {
 		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
-		return runPutRequestInternal(url, location, monitor, re);
-	}
-	private PutMethod runPutRequestInternal(String url, AbstractWebLocation location, IProgressMonitor monitor, RequestEntity re) {
-		if (url == null)
-			throw new IllegalArgumentException("url is null");
-		HttpClient httpClient = createHttpClient();
-		setupClientAuthentication(httpClient, location, monitor);
-
-		HostConfiguration hostConfiguration = WebUtil.createHostConfiguration(httpClient, location, monitor);
-		PutMethod method = new PutMethod(WebUtil.getRequestPath(url));
-		method.addRequestHeader(ACCEPT_XML_HEADER);
-		method.addRequestHeader(CONTENT_TYPE_XML_HEADER);
-		method.setRequestEntity(re);
-		boolean okay = false;
-		try {
-			int status = WebUtil.execute(httpClient, hostConfiguration, method, monitor);
-
-			switch (status) {
-			case HttpURLConnection.HTTP_UNAUTHORIZED:
-			case HttpURLConnection.HTTP_FORBIDDEN:
-				throw new LoginException();
-			default:
-				okay = true;
-				return method;
-			}
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		} finally {
-			if (!okay) {
-				WebUtil.releaseConnection(method, monitor);
-			}
-		}
+		return portal.runPutRequest(url, location, monitor, re);
 	}
 
 	public PostMethod runPostRequestPath(String restPath, IProgressMonitor monitor, RequestEntity re, boolean contentTypeXml) {
 		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
-		return runPostRequestInternal(location.getUrl() + restPath, location, monitor, re, contentTypeXml);
+		return portal.runPostRequest(location.getUrl() + restPath, location, monitor, re, contentTypeXml);
 	}
 	public PostMethod runPostRequestUrl(String url, IProgressMonitor monitor, RequestEntity re, boolean contentTypeXml) {
 		AbstractWebLocation location = new TaskRepositoryLocationFactory().createWebLocation(repository);
-		return runPostRequestInternal(url, location, monitor, re, contentTypeXml);
-	}
-	private PostMethod runPostRequestInternal(String url, AbstractWebLocation location, IProgressMonitor monitor, RequestEntity re, boolean contentTypeXml) {
-		HttpClient httpClient = createHttpClient();
-		setupClientAuthentication(httpClient, location, monitor);
-
-		HostConfiguration hostConfiguration = WebUtil.createHostConfiguration(httpClient, location, monitor);
-		PostMethod method = new PostMethod(WebUtil.getRequestPath(url));
-		method.addRequestHeader(ACCEPT_XML_HEADER);
-		if (contentTypeXml)
-			method.addRequestHeader(CONTENT_TYPE_XML_HEADER);
-		method.setRequestEntity(re);
-		boolean okay = false;
-		try {
-			int status = WebUtil.execute(httpClient, hostConfiguration, method, monitor);
-
-			switch (status) {
-			case HttpURLConnection.HTTP_UNAUTHORIZED:
-			case HttpURLConnection.HTTP_FORBIDDEN:
-				throw new LoginException();
-			default:
-				okay = true;
-				return method;
-			}
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		} finally {
-			if (!okay) {
-				WebUtil.releaseConnection(method, monitor);
-			}
-		}
+		return portal.runPostRequest(url, location, monitor, re, contentTypeXml);
 	}
 
 
@@ -647,15 +518,15 @@ public class RhcpClientImpl implements RhcpClient {
 	}
 
 	public List<String> getTypes() {
-		return getXmlData(this.types, VALUES_CASE_TYPES, new NullProgressMonitor(), VALUES_EXTRACTOR);
+		return getXmlData(this.types, VALUES_CASE_TYPES, new NullProgressMonitor(), CustomerPortalClient.VALUES_EXTRACTOR);
 	}
 	
 	public List<String> getSeverities() {
-		return getXmlData(this.severities, VALUES_SEVERITIES, new NullProgressMonitor(), VALUES_EXTRACTOR);
+		return getXmlData(this.severities, VALUES_SEVERITIES, new NullProgressMonitor(), CustomerPortalClient.VALUES_EXTRACTOR);
 	}
 	
 	public List<String> getStatuses() {
-		return getXmlData(this.statuses, VALUES_STATUSES, new NullProgressMonitor(), VALUES_EXTRACTOR);
+		return getXmlData(this.statuses, VALUES_STATUSES, new NullProgressMonitor(), CustomerPortalClient.VALUES_EXTRACTOR);
 	}
 
 	

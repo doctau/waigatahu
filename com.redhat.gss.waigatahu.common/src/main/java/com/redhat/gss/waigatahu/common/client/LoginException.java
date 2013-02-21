@@ -1,4 +1,4 @@
-package com.redhat.gss.waigatahu.cases.core.client;
+package com.redhat.gss.waigatahu.common.client;
 
 public class LoginException extends RuntimeException {
 

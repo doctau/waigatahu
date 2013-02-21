@@ -66,8 +66,10 @@
 
 	<modules>
 		<module>com.redhat.gss.waigatahu.generated</module>
+		<module>com.redhat.gss.waigatahu.common</module>
 		<module>com.redhat.gss.waigatahu.feature</module>
 		<module>com.redhat.gss.waigatahu.updatesite</module>
 		<module>com.redhat.gss.waigatahu.cases</module>
+		<module>com.redhat.gss.waigatahu.diagnostics</module>
 	</modules>
 </project>
