@@ -25,6 +25,8 @@ public class CaseRepositoryPage extends AbstractRepositorySettingsPage {
 	}
 
 	protected void createAdditionalControls(Composite parent) {
+		addRepositoryTemplatesToServerUrlCombo();
+
 		// TODO: add any custom controls
 	}
 

@@ -1,6 +1,5 @@
 package com.redhat.gss.waigatahu.diagnostics.ui.console;
 
-import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 
 import org.eclipse.core.runtime.IStatus;
@@ -13,13 +12,10 @@ import org.eclipse.ui.console.TextConsole;
 import org.eclipse.ui.console.TextConsolePage;
 import org.eclipse.ui.statushandlers.StatusManager;
 
-import com.redhat.gss.strata.model.Link;
-import com.redhat.gss.strata.model.Problem;
-import com.redhat.gss.strata.model.Problems;
-import com.redhat.gss.strata.model.Source;
 import com.redhat.gss.waigatahu.diagnostics.core.WaigatahuDiagnosticsCorePlugin;
 import com.redhat.gss.waigatahu.diagnostics.core.client.DiagnosticsClient;
 import com.redhat.gss.waigatahu.diagnostics.core.client.DiagnosticsClientFactory;
+import com.redhat.gss.waigatahu.diagnostics.core.data.DiagnosticResults;
 import com.redhat.gss.waigatahu.diagnostics.ui.editor.DiagnosisResultsEditor;
 import com.redhat.gss.waigatahu.diagnostics.ui.editor.DiagnostisResultsEditorInput;
 
@@ -50,9 +46,9 @@ public class SubmitDiagnosticsAction extends Action {
 		}
 
 		try {
-			Problems problems = client.diagnose(bs, new NullProgressMonitor()); // FIXME: actually add progress to the UI
+			DiagnosticResults results = client.diagnose(bs, new NullProgressMonitor()); // FIXME: actually add progress to the UI
 			
-			IEditorInput input = new DiagnostisResultsEditorInput(problems);
+			IEditorInput input = new DiagnostisResultsEditorInput(results);
 			PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().openEditor(input, DiagnosisResultsEditor.ID);
 		} catch (Exception e) {
 			StatusManager.getManager().handle(

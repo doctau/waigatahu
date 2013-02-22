@@ -16,7 +16,7 @@
       <repository
             addAutomatically="false"
             anonymous="false"
-            label="Red Hat Customer Portal"
+            label="Red Hat Customer Portal (https://api.access.redhat.com/rs)"
             repositoryKind="com.redhat.gss.waigatahu.cases"
             urlRepository="https://api.access.redhat.com/rs"/>
    </extension> 

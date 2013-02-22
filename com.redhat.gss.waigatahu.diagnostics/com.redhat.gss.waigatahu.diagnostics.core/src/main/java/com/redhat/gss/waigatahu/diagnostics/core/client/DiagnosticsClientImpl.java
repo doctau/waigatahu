@@ -2,7 +2,6 @@ package com.redhat.gss.waigatahu.diagnostics.core.client;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 
 import javax.xml.bind.JAXBContext;
@@ -14,13 +13,13 @@ import org.apache.commons.httpclient.methods.ByteArrayRequestEntity;
 import org.apache.commons.httpclient.methods.InputStreamRequestEntity;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.RequestEntity;
-import org.apache.commons.httpclient.params.HttpMethodParams;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.mylyn.commons.net.AbstractWebLocation;
 import org.eclipse.mylyn.commons.net.WebUtil;
 
 import com.redhat.gss.strata.model.Problems;
 import com.redhat.gss.waigatahu.common.client.CustomerPortalClient;
+import com.redhat.gss.waigatahu.diagnostics.core.data.DiagnosticResults;
 
 public class DiagnosticsClientImpl implements DiagnosticsClient {
 	private final JAXBContext jaxbContext;
@@ -51,15 +50,15 @@ public class DiagnosticsClientImpl implements DiagnosticsClient {
 		//FIXME: do anything here?
 	}
 
-	public Problems diagnose(byte[] bs, IProgressMonitor monitor) {
+	public DiagnosticResults diagnose(byte[] bs, IProgressMonitor monitor) {
 		return diagnoseInternal(new ByteArrayRequestEntity(bs), monitor);
 	}
 
-	public Problems diagnose(InputStream is, IProgressMonitor monitor) {
+	public DiagnosticResults diagnose(InputStream is, IProgressMonitor monitor) {
 		return diagnoseInternal(new InputStreamRequestEntity(is), monitor);
 	}
 	
-	protected Problems diagnoseInternal(RequestEntity re, IProgressMonitor monitor) {
+	protected DiagnosticResults diagnoseInternal(RequestEntity re, IProgressMonitor monitor) {
 		PostMethod method = null;
 		try {
 			Header[] headers = new Header[] {CustomerPortalClient.CONTENT_TYPE_BINARY_HEADER};
@@ -70,7 +69,7 @@ public class DiagnosticsClientImpl implements DiagnosticsClient {
 				try {
 					InputStream ris = WebUtil.getResponseBodyAsStream(method, monitor);
 				    Unmarshaller um = jaxbContext.createUnmarshaller();
-				    return ((Problems) um.unmarshal(ris));
+				    return new DiagnosticResults(((Problems) um.unmarshal(ris)));
 				} catch (IOException e) {
 					throw new RuntimeException(e);
 				} catch (JAXBException e) {

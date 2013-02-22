@@ -4,11 +4,11 @@ import java.io.InputStream;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 
-import com.redhat.gss.strata.model.Problems;
+import com.redhat.gss.waigatahu.diagnostics.core.data.DiagnosticResults;
 
 public interface DiagnosticsClient {
 	void shutdown();
 
-	Problems diagnose(byte[] bs, IProgressMonitor monitor);
-	Problems diagnose(InputStream is, IProgressMonitor monitor);
+	DiagnosticResults diagnose(byte[] bs, IProgressMonitor monitor);
+	DiagnosticResults diagnose(InputStream is, IProgressMonitor monitor);
 }

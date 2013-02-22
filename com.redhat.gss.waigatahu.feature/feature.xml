@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
       id="com.redhat.gss.waigatahu.feature"
-      label="waigatahu-feature"
+      label="Red Hat Customer Portal integration"
       version="0.0.1.qualifier">
 
    <description url="http://www.example.com/description">
@@ -46,6 +46,13 @@
 
    <plugin
          id="com.redhat.gss.waigatahu.generated"
+         download-size="0"
+         install-size="0"
+         version="0.0.1"
+         unpack="false"/>
+
+   <plugin
+         id="com.redhat.gss.waigatahu.common"
          download-size="0"
          install-size="0"
          version="0.0.1"

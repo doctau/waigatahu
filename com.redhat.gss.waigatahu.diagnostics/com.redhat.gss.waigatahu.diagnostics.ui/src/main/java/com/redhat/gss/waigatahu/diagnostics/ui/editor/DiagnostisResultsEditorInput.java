@@ -4,13 +4,13 @@ import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IPersistableElement;
 
-import com.redhat.gss.strata.model.Problems;
+import com.redhat.gss.waigatahu.diagnostics.core.data.DiagnosticResults;
 
 public class DiagnostisResultsEditorInput implements IEditorInput {
-	private final Problems problems;
+	private final DiagnosticResults results;
 
-	public DiagnostisResultsEditorInput(Problems problems) {
-		this.problems = problems;
+	public DiagnostisResultsEditorInput(DiagnosticResults results) {
+		this.results = results;
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -44,8 +44,8 @@ public class DiagnostisResultsEditorInput implements IEditorInput {
 		return null;
 	}
 
-	public Problems getProblems() {
-		return problems;
+	public DiagnosticResults getResults() {
+		return results;
 	}
 
 }
