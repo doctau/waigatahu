@@ -1,5 +1,6 @@
 package com.redhat.gss.waigatahu.cases.ui;
 
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.wizard.IWizard;
 import org.eclipse.jface.wizard.IWizardPage;
@@ -14,7 +15,6 @@ import org.eclipse.mylyn.tasks.ui.wizards.ITaskSearchPage;
 
 import com.redhat.gss.waigatahu.cases.core.CaseRepositoryConnector;
 import com.redhat.gss.waigatahu.cases.core.WaigatahuCaseCorePlugin;
-import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactory;
 import com.redhat.gss.waigatahu.cases.data.CaseAttribute;
 import com.redhat.gss.waigatahu.cases.ui.attachment.CaseAttachmentPage;
 import com.redhat.gss.waigatahu.cases.ui.query.CaseQueryPage;
@@ -32,7 +32,7 @@ public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 		return WaigatahuCaseCorePlugin.CONNECTOR_KIND;
 	}
 
-	private RhcpClientFactory getConnector() {
+	private CaseRepositoryConnector getConnector() {
 		//FIXME: how to get this?
 		return WaigatahuCaseCorePlugin.getConnector();
 	}
@@ -72,11 +72,13 @@ public class WaigatahuCaseConnectorUi extends AbstractRepositoryConnectorUi {
 	/* account management URLs */
 
 	public String getAccountCreationUrl(TaskRepository taskRepository) {
-		return getConnector().getClient(taskRepository).getAccountManagementUrl().toExternalForm();
+		NullProgressMonitor monitor = new NullProgressMonitor();
+		return getConnector().getClient(taskRepository).getAccountManagementUrl(monitor).toExternalForm();
 	}
 
 	public String getAccountManagementUrl(TaskRepository taskRepository) {
-		return getConnector().getClient(taskRepository).getUserProfileUrl().toExternalForm();
+		NullProgressMonitor monitor = new NullProgressMonitor();
+		return getConnector().getClient(taskRepository).getUserProfileUrl(monitor).toExternalForm();
 	}
 	
 	/* case URLs */

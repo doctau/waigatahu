@@ -28,6 +28,7 @@ import com.redhat.gss.strata.model.Link;
 import com.redhat.gss.strata.model.Problem;
 import com.redhat.gss.strata.model.Source;
 import com.redhat.gss.waigatahu.diagnostics.core.WaigatahuDiagnosticsCorePlugin;
+import com.redhat.gss.waigatahu.knowledge.ui.KnowledgeUIPlugin;
 
 public class DiagnosticResultsFormPage extends FormPage {
 	public static final String ID = "com.redhat.gss.waigatahu.diagnostics.ui.editor.DiagnosticResultsFormPage";
@@ -90,24 +91,11 @@ public class DiagnosticResultsFormPage extends FormPage {
 		hl.setToolTipText(link.getExplanation());
 		hl.addHyperlinkListener(HYPERLINK_RESPONDER);
 	}
-	
+
 	private static HyperlinkAdapter HYPERLINK_RESPONDER = new HyperlinkAdapter() {
 		public void linkActivated(HyperlinkEvent ev) {
 			String uri = (String) ev.getHref();
-			try {
-				//FIXME: load the xml doc and read view_uri to get the web browser one
-				IWorkbenchBrowserSupport browserSupport = PlatformUI.getWorkbench().getBrowserSupport();
-				IWebBrowser browser = browserSupport.createBrowser(IWorkbenchBrowserSupport.AS_EDITOR, uri, ev.getLabel(), ev.getLabel());
-				browser.openURL(new URL(uri));
-			} catch (PartInitException ex) {
-				StatusManager.getManager().handle(
-						new Status(IStatus.ERROR, WaigatahuDiagnosticsCorePlugin.PLUGIN_ID,
-								"Error opening browser", ex));
-			} catch (MalformedURLException ex) {
-				StatusManager.getManager().handle(
-						new Status(IStatus.ERROR, WaigatahuDiagnosticsCorePlugin.PLUGIN_ID,
-								"Error opening browser", ex));
-			}
+			KnowledgeUIPlugin.getDefault().createKnowledgeEditor(uri, ev.getLabel());
 		}
 	};
 }

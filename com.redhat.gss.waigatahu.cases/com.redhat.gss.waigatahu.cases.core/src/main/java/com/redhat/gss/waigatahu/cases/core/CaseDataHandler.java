@@ -105,7 +105,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			monitor.beginTask("Creating Case", IProgressMonitor.UNKNOWN);
 			Case tempCase = createCaseFromTaskData(repository, taskData, monitor);
 			Case createdCase = client.createCase(tempCase, monitor);
-			updateTaskData(client, repository, taskData, createdCase);
+			updateTaskData(client, repository, taskData, createdCase, monitor);
 			postCaseCreation(taskData);
 
 			String taskId = connector.getTaskIdFromTaskUrl(createdCase.getUri());
@@ -120,7 +120,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 			throws CoreException {
 		RhcpClient client = connector.getClient(repository);
 		taskData.setVersion(TASK_DATA_VERSION);
-		createDefaultAttributes(taskData, client, client.getAccountNumber(monitor));
+		createDefaultAttributes(taskData, client, client.getAccountNumber(monitor), monitor);
 
 		TaskAttribute root = taskData.getRoot();
 
@@ -210,13 +210,13 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		TaskData taskData = new TaskData(getAttributeMapper(repository), WaigatahuCaseCorePlugin.CONNECTOR_KIND,
 				repository.getRepositoryUrl(), taskId);
 		taskData.setVersion(TASK_DATA_VERSION);
-		createDefaultAttributes(taskData, client, client.getAccountNumber(monitor));
+		createDefaultAttributes(taskData, client, client.getAccountNumber(monitor), monitor);
 
 		// create the attributes which only exist for real tasks
 		addAttribute(taskData, TaskAttribute.COMMENT_NEW, "",
 				TaskAttribute.TYPE_LONG_RICH_TEXT, "New comment",
 				CaseAttribute.KIND_HIDDEN, false);
-		updateTaskData(client, repository, taskData, supportCase);
+		updateTaskData(client, repository, taskData, supportCase, monitor);
 		postCaseCreation(taskData);
 
 		// attachments are not loaded yet
@@ -282,20 +282,20 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	// Mappings from RhcpSupportCase to TaskData
 	
-	private void createDefaultAttributes(TaskData taskData, RhcpClient client, String accountNumber) {
+	private void createDefaultAttributes(TaskData taskData, RhcpClient client, String accountNumber, IProgressMonitor monitor) {
 		final boolean readOnly = false;
 
 		TaskAttribute attr = addAttribute(taskData, TaskAttribute.STATUS, null,
 				TaskAttribute.TYPE_SINGLE_SELECT, "Status",
 				TaskAttribute.KIND_DEFAULT, readOnly);
-		for (String s: client.getStatuses()) {
+		for (String s: client.getStatuses(monitor)) {
 			attr.putOption(s, s);
 		}
 
 		attr = addAttribute(taskData, TaskAttribute.SEVERITY, null,
 			TaskAttribute.TYPE_SINGLE_SELECT, "Severity",
 			TaskAttribute.KIND_DEFAULT, readOnly);
-		for (String s: client.getSeverities()) {
+		for (String s: client.getSeverities(monitor)) {
 			attr.putOption(s, s);
 		}
 
@@ -303,14 +303,14 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 				TaskAttribute.TYPE_SINGLE_SELECT, "Case type",
 				TaskAttribute.KIND_DEFAULT, readOnly);
 		attr.putOption("", ""); // default is none
-		for (String s: client.getTypes()) {
+		for (String s: client.getTypes(monitor)) {
 			attr.putOption(s, s);
 		}
 
 		attr = addAttribute(taskData, TaskAttribute.PRODUCT, null,
 				TaskAttribute.TYPE_SINGLE_SELECT, "Product",
 				TaskAttribute.KIND_DEFAULT, readOnly);
-		for (Product p: client.getProducts()) {
+		for (Product p: client.getProducts(monitor)) {
 			attr.putOption(p.getName(), p.getCode());
 		}
 
@@ -376,7 +376,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 				CaseAttribute.KIND_HIDDEN, true);
 
 
-		for (User u: client.getUsers(accountNumber)) {
+		for (User u: client.getUsers(accountNumber, monitor)) {
 			//FIXME: i18n of combining names sucks
 			String name = u.getFirstName() + " " + u.getLastName();
 			userContactAttr.putOption(u.getSsoUsername(), name);
@@ -387,7 +387,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		// group - how do we find out if it's available to them?
 	}
 
-	private void updateTaskData(RhcpClient client, TaskRepository repository, TaskData taskData, Case supportCase) {
+	private void updateTaskData(RhcpClient client, TaskRepository repository, TaskData taskData, Case supportCase, IProgressMonitor monitor) {
 		TaskAttribute root = taskData.getRoot();
 		CaseAttributeMapper mapper = getAttributeMapper(repository);
 
@@ -410,9 +410,9 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 
 		// users
-		bindUserAttribute(client, repository, root.getAttribute(TaskAttribute.USER_ASSIGNED), supportCase.getOwner());
-		bindUserAttribute(client, repository, root.getAttribute(TaskAttribute.USER_REPORTER), supportCase.getCreatedBy());
-		bindUserAttribute(client, repository, root.getAttribute(CaseAttribute.USER_LAST_MODIFIER), supportCase.getLastModifiedBy());
+		bindUserAttribute(client, repository, root.getAttribute(TaskAttribute.USER_ASSIGNED), supportCase.getOwner(), monitor);
+		bindUserAttribute(client, repository, root.getAttribute(TaskAttribute.USER_REPORTER), supportCase.getCreatedBy(), monitor);
+		bindUserAttribute(client, repository, root.getAttribute(CaseAttribute.USER_LAST_MODIFIER), supportCase.getLastModifiedBy(), monitor);
 
 		// contacts aren't RH people, so don't set the flag
 		IRepositoryPerson contactPerson = repository.createPerson((supportCase.getContactSsoUsername() != null) ? supportCase.getContactSsoUsername() : supportCase.getContactName());
@@ -438,7 +438,7 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		mapper.setValue(root.getAttribute(TaskAttribute.PRODUCT), supportCase.getProduct());
 		if (supportCase.getProduct() != null) {
 			root.getAttribute(TaskAttribute.VERSION).clearOptions();
-			for (String v: client.getVersions(supportCase.getProduct())) {
+			for (String v: client.getVersions(supportCase.getProduct(), monitor)) {
 				root.getAttribute(TaskAttribute.VERSION).putOption(v, v);
 			}
 		} else {
@@ -459,9 +459,12 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 		TaskAttribute folderAttr = root.getAttribute(CaseAttribute.FOLDER);
 		mapper.setNullableStringValue(folderAttr, supportCase.getFolderNumber());
 		folderAttr.putOption("", ""); // default is none
-		for (Group p: client.getGroups()) {
+		for (Group p: client.getGroups(monitor)) {
 			folderAttr.putOption(p.getName(), p.getNumber());
 		}
+		
+		//FIXME: attached bugzilla data?
+		//meta: TYPE_TASK_DEPENDENCY
 
 		
 		// comments
@@ -484,14 +487,14 @@ public class CaseDataHandler extends AbstractTaskDataHandler {
 
 	private void bindUserAttribute(RhcpClient client,
 			TaskRepository repository, TaskAttribute attr,
-			String userId) {
+			String userId, IProgressMonitor monitor) {
 		CaseAttributeMapper mapper = getAttributeMapper(repository);
 
 		IRepositoryPerson person = repository.createPerson(userId);
 		mapper.setRepositoryPerson(attr, person);
 
 		TaskAttribute isRedhatAttr = new TaskAttribute(attr, PersonAttribute.IS_REDHAT);
-		mapper.setBooleanValue(isRedhatAttr, client.isUserRedHat(userId));
+		mapper.setBooleanValue(isRedhatAttr, client.isUserRedHat(userId, monitor));
 	}
 	
 	private Case createCaseFromTaskData(TaskRepository repository, TaskData taskData, IProgressMonitor monitor) throws CoreException {

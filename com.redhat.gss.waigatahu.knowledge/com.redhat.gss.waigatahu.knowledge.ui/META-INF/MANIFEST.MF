@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: com.redhat.gss.waigatahu.knowledge.ui
+Bundle-SymbolicName: com.redhat.gss.waigatahu.knowledge.ui;singleton:=true
+Bundle-Version: 0.0.1.qualifier
+Bundle-Activator: com.redhat.gss.waigatahu.knowledge.ui.KnowledgeUIPlugin
+Bundle-Vendor: REDHAT
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ com.redhat.gss.waigatahu.knowledge.core;bundle-version="0.0.1",
+ com.redhat.gss.waigatahu.common;bundle-version="0.0.1",
+ org.eclipse.ui.browser;bundle-version="3.4.0",
+ com.redhat.gss.waigatahu.generated;bundle-version="0.0.1"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-ActivationPolicy: lazy
+Export-Package: com.redhat.gss.waigatahu.knowledge.ui

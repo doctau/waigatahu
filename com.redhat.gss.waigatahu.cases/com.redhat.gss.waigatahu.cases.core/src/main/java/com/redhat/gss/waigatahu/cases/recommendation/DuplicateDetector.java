@@ -6,16 +6,16 @@ import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
 
+import com.redhat.gss.waigatahu.cases.core.CaseRepositoryConnector;
 import com.redhat.gss.waigatahu.cases.core.WaigatahuCaseCorePlugin;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
-import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactory;
 
 public class DuplicateDetector extends AbstractDuplicateDetector {
 	public DuplicateDetector() {
 		
 	}
 
-	private RhcpClientFactory getConnector() {
+	private CaseRepositoryConnector getConnector() {
 		//FIXME: how to get this?
 		return WaigatahuCaseCorePlugin.getConnector();
 	}

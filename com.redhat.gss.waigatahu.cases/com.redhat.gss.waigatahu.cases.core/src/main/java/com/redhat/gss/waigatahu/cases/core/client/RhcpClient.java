@@ -46,18 +46,18 @@ public interface RhcpClient {
 
 
 	// field values
-	void updateData();
-	List<Product> getProducts();
-	List<String> getVersions(String product);
-	List<String> getStatuses();
-	List<String> getSeverities();
-	List<String> getTypes();
-	List<Group> getGroups();
-	List<User> getUsers(String accountNumber);
+	void updateData(IProgressMonitor monitor);
+	List<Product> getProducts(IProgressMonitor monitor);
+	List<String> getVersions(String product, IProgressMonitor monitor);
+	List<String> getStatuses(IProgressMonitor monitor);
+	List<String> getSeverities(IProgressMonitor monitor);
+	List<String> getTypes(IProgressMonitor monitor);
+	List<Group> getGroups(IProgressMonitor monitor);
+	List<User> getUsers(String accountNumber, IProgressMonitor monitor);
 	
 
 	// other data
-	boolean isUserRedHat(String userId);
-	URL getAccountManagementUrl();
-	URL getUserProfileUrl();
+	boolean isUserRedHat(String userId, IProgressMonitor monitor);
+	URL getAccountManagementUrl(IProgressMonitor monitor);
+	URL getUserProfileUrl(IProgressMonitor monitor);
 }

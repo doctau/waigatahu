@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: com.redhat.gss.waigatahu.cases.core
 Bundle-SymbolicName: com.redhat.gss.waigatahu.cases.core;singleton:=true
 Bundle-Version: 0.0.1.qualifier
-Bundle-Activator: com.redhat.gss.waigatahu.cases.core.Activator
+Bundle-Activator: com.redhat.gss.waigatahu.cases.core.WaigatahuCaseCorePlugin
 Require-Bundle: org.eclipse.core.runtime,
  org.apache.commons.httpclient,
  com.redhat.gss.waigatahu.common

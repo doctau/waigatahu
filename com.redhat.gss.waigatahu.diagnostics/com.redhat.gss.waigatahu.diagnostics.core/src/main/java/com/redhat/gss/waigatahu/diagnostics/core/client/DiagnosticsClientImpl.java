@@ -30,8 +30,8 @@ public class DiagnosticsClientImpl implements DiagnosticsClient {
 		Problems.class
 	};
 
-	public DiagnosticsClientImpl(AbstractWebLocation baseLocation) {
-		this.portal = new CustomerPortalClient();
+	public DiagnosticsClientImpl(AbstractWebLocation baseLocation, CustomerPortalClient portal) {
+		this.portal = portal;
 		this.baseLocation = baseLocation;
 
 		try {

@@ -27,4 +27,13 @@
             id="com.redhat.gss.waigatahu.cases.ui.pageFactory">
       </pageFactory>
    </extension>
+   <extension
+         point="org.eclipse.ui.workbench.texteditor.hyperlinkDetectors">
+      <hyperlinkDetector            
+            class="com.redhat.gss.waigatahu.ui.CaseHyperlinkDetector"
+            id="com.redhat.gss.waigatahu.ui.hyperlinksDetectors.Case"
+            name="%CaseHyperlinkDetector.name"
+            targetId="org.eclipse.mylyn.tasks.ui.TaskEditor">
+      </hyperlinkDetector>
+   </extension>
 </plugin>

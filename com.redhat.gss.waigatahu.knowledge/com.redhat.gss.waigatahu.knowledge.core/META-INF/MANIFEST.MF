@@ -1,0 +1,17 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: com.redhat.gss.waigatahu.knowledge.core
+Bundle-SymbolicName: com.redhat.gss.waigatahu.knowledge.core;singleton:=true
+Bundle-Version: 0.0.1.qualifier
+Bundle-Activator: com.redhat.gss.waigatahu.knowledge.core.KnowledgeCorePlugin
+Bundle-Vendor: REDHAT
+Require-Bundle: org.eclipse.core.runtime,
+ com.redhat.gss.waigatahu.common;bundle-version="0.0.1",
+ com.redhat.gss.waigatahu.generated;bundle-version="0.0.1",
+ org.apache.commons.httpclient;bundle-version="3.1.0"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-ActivationPolicy: lazy
+Export-Package: com.redhat.gss.waigatahu.knowledge.core,
+ com.redhat.gss.waigatahu.knowledge.core.client
+Import-Package: com.redhat.gss.waigatahu.cases.core,
+ org.eclipse.mylyn.commons.net

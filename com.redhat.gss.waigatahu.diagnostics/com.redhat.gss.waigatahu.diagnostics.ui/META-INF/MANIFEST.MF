@@ -10,7 +10,7 @@ Require-Bundle: com.redhat.gss.waigatahu.diagnostics.core;bundle-version="0.0.1"
  com.redhat.gss.waigatahu.generated;bundle-version="0.0.1",
  org.eclipse.core.runtime;bundle-version="3.8.0",
  org.eclipse.ui;bundle-version="3.103.0",
- org.eclipse.ui.browser;bundle-version="3.4.0"
+ com.redhat.gss.waigatahu.knowledge.ui;bundle-version="0.0.1"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Import-Package: org.eclipse.jface,
  org.eclipse.jface.text,

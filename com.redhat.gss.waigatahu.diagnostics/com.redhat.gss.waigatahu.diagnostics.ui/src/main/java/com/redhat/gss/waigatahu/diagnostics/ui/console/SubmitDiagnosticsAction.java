@@ -1,13 +1,17 @@
 package com.redhat.gss.waigatahu.diagnostics.ui.console;
 
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.InvocationTargetException;
 
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.ui.IEditorInput;
-import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.console.TextConsole;
 import org.eclipse.ui.console.TextConsolePage;
 import org.eclipse.ui.statushandlers.StatusManager;
@@ -35,22 +39,39 @@ public class SubmitDiagnosticsAction extends Action {
 	}
 
 	public void run() {
-		DiagnosticsClient client = clientFactory.getClient();
-
 		//FIXME: there must be a better way of doing this
-		byte[] bs;
+		final byte[] bs;
 		try {
 			bs = console.getDocument().get().getBytes("UTF-8");
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException(e);
-		}
 
-		try {
-			DiagnosticResults results = client.diagnose(bs, new NullProgressMonitor()); // FIXME: actually add progress to the UI
-			
-			IEditorInput input = new DiagnostisResultsEditorInput(results);
-			PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().openEditor(input, DiagnosisResultsEditor.ID);
-		} catch (Exception e) {
+			final IWorkbenchWindow window = page.getSite().getWorkbenchWindow();
+			window.getWorkbench().getProgressService().run(true, true, new IRunnableWithProgress() {
+				public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
+					DiagnosticsClient client = clientFactory.getClient();
+					DiagnosticResults results;
+					try {
+						results = client.diagnose(bs, new NullProgressMonitor()); // FIXME: actually add progress to the UI
+					} catch (Exception e) {
+						throw new InvocationTargetException(e);
+					}
+
+					IEditorInput input = new DiagnostisResultsEditorInput(results);
+					try {
+						window.getActivePage().openEditor(input, DiagnosisResultsEditor.ID);
+					} catch (PartInitException e) {
+						throw new InvocationTargetException(e);
+					}
+				}
+			});
+		} catch (InvocationTargetException e) {
+			StatusManager.getManager().handle(
+					new Status(IStatus.ERROR, WaigatahuDiagnosticsCorePlugin.PLUGIN_ID,
+							"Error diagnosing data", e));
+		} catch (InterruptedException e) {
+			StatusManager.getManager().handle(
+					new Status(IStatus.ERROR, WaigatahuDiagnosticsCorePlugin.PLUGIN_ID,
+							"Error diagnosing data", e));
+		} catch (UnsupportedEncodingException e) {
 			StatusManager.getManager().handle(
 					new Status(IStatus.ERROR, WaigatahuDiagnosticsCorePlugin.PLUGIN_ID,
 							"Error diagnosing data", e));

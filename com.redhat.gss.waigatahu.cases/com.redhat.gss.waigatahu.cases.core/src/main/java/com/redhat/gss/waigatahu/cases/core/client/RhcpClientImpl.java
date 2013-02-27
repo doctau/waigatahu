@@ -39,7 +39,6 @@ import org.apache.commons.httpclient.methods.multipart.PartSource;
 import org.apache.commons.httpclient.params.HttpMethodParams;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.mylyn.commons.net.AbstractWebLocation;
 import org.eclipse.mylyn.commons.net.AuthenticationCredentials;
 import org.eclipse.mylyn.commons.net.AuthenticationType;
@@ -143,9 +142,9 @@ public class RhcpClientImpl implements RhcpClient {
 	private Id<Future<List<Group>>> groups = new Id<Future<List<Group>>>();
 	private ConcurrentMap<String, Id<Future<List<User>>>> users = new ConcurrentHashMap<String, Id<Future<List<User>>>>();
 
-	public RhcpClientImpl(TaskRepository repository) {
+	public RhcpClientImpl(TaskRepository repository, CustomerPortalClient portal) {
 		this.repository = repository;
-		this.portal = new CustomerPortalClient();
+		this.portal = portal;
 
 		try {
 			this.jaxbContext = JAXBContext.newInstance(XML_CLASSES);
@@ -474,7 +473,7 @@ public class RhcpClientImpl implements RhcpClient {
 
 	
 	/* reference data */
-	public void updateData() {
+	public void updateData(IProgressMonitor monitor) {
 		synchronized (this) {
 			products.value = null;
 			types.value = null;
@@ -486,23 +485,23 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public List<Product> getProducts() {
-		return getXmlData(this.products, VALUES_PRODUCTS, new NullProgressMonitor(), new Function1<Object, List<Product>>() {
+	public List<Product> getProducts(IProgressMonitor monitor) {
+		return getXmlData(this.products, VALUES_PRODUCTS, monitor, new Function1<Object, List<Product>>() {
 			public List<Product> apply(Object o) {
 				return ((Products)o).getProduct();
 			}
 		});
 	}
 	
-	public List<Group> getGroups() {
-		return getXmlData(this.groups, VALUES_GROUPS, new NullProgressMonitor(), new Function1<Object, List<Group>>() {
+	public List<Group> getGroups(IProgressMonitor monitor) {
+		return getXmlData(this.groups, VALUES_GROUPS, monitor, new Function1<Object, List<Group>>() {
 			public List<Group> apply(Object o) {
 				return ((Groups)o).getGroup();
 			}
 		});
 	}
 	
-	public List<String> getVersions(final String product) {
+	public List<String> getVersions(final String product, IProgressMonitor monitor) {
 		String escProduct = product.replace(" ", "%20"); // FIXME this sucks, but URLEncoder turns spaces into +s
 
 		Id<Future<List<String>>> id = new Id<Future<List<String>>>();
@@ -510,33 +509,33 @@ public class RhcpClientImpl implements RhcpClient {
 		if (v == null)
 			v = id;
 
-		return getXmlData(v, "/products/" + escProduct + "/versions", new NullProgressMonitor(), new Function1<Object, List<String>>() {
+		return getXmlData(v, "/products/" + escProduct + "/versions", monitor, new Function1<Object, List<String>>() {
 			public List<String> apply(Object o) {
 				return ((Versions)o).getVersion();
 			}
 		});
 	}
 
-	public List<String> getTypes() {
-		return getXmlData(this.types, VALUES_CASE_TYPES, new NullProgressMonitor(), CustomerPortalClient.VALUES_EXTRACTOR);
+	public List<String> getTypes(IProgressMonitor monitor) {
+		return getXmlData(this.types, VALUES_CASE_TYPES, monitor, CustomerPortalClient.VALUES_EXTRACTOR);
 	}
 	
-	public List<String> getSeverities() {
-		return getXmlData(this.severities, VALUES_SEVERITIES, new NullProgressMonitor(), CustomerPortalClient.VALUES_EXTRACTOR);
+	public List<String> getSeverities(IProgressMonitor monitor) {
+		return getXmlData(this.severities, VALUES_SEVERITIES, monitor, CustomerPortalClient.VALUES_EXTRACTOR);
 	}
 	
-	public List<String> getStatuses() {
-		return getXmlData(this.statuses, VALUES_STATUSES, new NullProgressMonitor(), CustomerPortalClient.VALUES_EXTRACTOR);
+	public List<String> getStatuses(IProgressMonitor monitor) {
+		return getXmlData(this.statuses, VALUES_STATUSES, monitor, CustomerPortalClient.VALUES_EXTRACTOR);
 	}
 
 	
-	public List<User> getUsers(final String accountNumber) {
+	public List<User> getUsers(final String accountNumber, IProgressMonitor monitor) {
 		Id<Future<List<User>>> id = new Id<Future<List<User>>>();
 		Id<Future<List<User>>> v = users.putIfAbsent(accountNumber, id);
 		if (v == null)
 			v = id;
 		return getXmlData(v, ACCOUNT_USERS_PREFIX + accountNumber + ACCOUNT_USERS_SUFFIX,
-				new NullProgressMonitor(), new Function1<Object, List<User>>() {
+				monitor, new Function1<Object, List<User>>() {
 			public List<User> apply(Object o) {
 				return ((Users)o).getUser();
 			}
@@ -554,12 +553,6 @@ public class RhcpClientImpl implements RhcpClient {
 				} catch (IOException e) {
 					throw new RuntimeException(e);
 				} catch (JAXBException e) {
-					String ss = null;
-					try {
-						ss = method.getResponseBodyAsString();
-					} catch (IOException ex) {
-						ss = ss;
-					}
 					throw new RuntimeException(e);
 				}
 			}
@@ -598,7 +591,7 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 	
-	public boolean isUserRedHat(String userId) {
+	public boolean isUserRedHat(String userId, IProgressMonitor monitor) {
 		//FIXME: don't hard-code this
 		// for the relevant fields, this is their full name not their username
 		if (userId.startsWith("rhn-"))
@@ -607,7 +600,7 @@ public class RhcpClientImpl implements RhcpClient {
 			return false;
 	}
 	
-	public URL getAccountManagementUrl() {
+	public URL getAccountManagementUrl(IProgressMonitor monitor) {
 		try {
 			//FIXME: don't hard-code
 			return new URL("https://www.redhat.com/wapps/ugc/protected/usermgt/userList.html");
@@ -616,7 +609,7 @@ public class RhcpClientImpl implements RhcpClient {
 		}
 	}
 
-	public URL getUserProfileUrl() {
+	public URL getUserProfileUrl(IProgressMonitor monitor) {
 		try {
 			//FIXME: don't hard-code
 			return new URL("https://www.redhat.com/wapps/ugc/protected/personalInfo.html");

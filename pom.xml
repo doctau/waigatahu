@@ -71,5 +71,6 @@
 		<module>com.redhat.gss.waigatahu.updatesite</module>
 		<module>com.redhat.gss.waigatahu.cases</module>
 		<module>com.redhat.gss.waigatahu.diagnostics</module>
+		<module>com.redhat.gss.waigatahu.knowledge</module>
 	</modules>
 </project>

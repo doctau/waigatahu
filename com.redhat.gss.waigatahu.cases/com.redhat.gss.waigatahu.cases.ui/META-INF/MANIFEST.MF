@@ -3,16 +3,19 @@ Bundle-ManifestVersion: 2
 Bundle-Name: com.redhat.gss.waigatahu.cases.ui
 Bundle-SymbolicName: com.redhat.gss.waigatahu.cases.ui;singleton:=true
 Bundle-Version: 0.0.1.qualifier
-Bundle-Activator: com.redhat.gss.waigatahu.cases.ui.Activator
+Bundle-Activator: com.redhat.gss.waigatahu.cases.ui.CasesUIPlugin
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
  com.redhat.gss.waigatahu.cases.core;bundle-version="0.0.1",
  org.eclipse.mylyn.tasks.core,
  org.eclipse.mylyn.tasks.ui,
- com.redhat.gss.waigatahu.generated;bundle-version="0.0.1"
+ com.redhat.gss.waigatahu.generated;bundle-version="0.0.1",
+ com.redhat.gss.waigatahu.common;bundle-version="0.0.1"
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
-Import-Package: org.eclipse.mylyn.commons.core,
+Import-Package: org.eclipse.jface.text,
+ org.eclipse.jface.text.hyperlink,
+ org.eclipse.mylyn.commons.core,
  org.eclipse.mylyn.commons.net,
  org.eclipse.mylyn.commons.ui,
  org.eclipse.mylyn.commons.workbench.forms,

@@ -4,7 +4,7 @@ import org.eclipse.core.runtime.Plugin;
 import org.osgi.framework.BundleContext;
 
 public class WaigatahuDiagnosticsCorePlugin extends Plugin {
-	public static final String PLUGIN_ID = "com.redhat.gss.waigatahu.diagnostics";
+	public static final String PLUGIN_ID = "com.redhat.gss.waigatahu.diagnostics.core";
 
 	private static WaigatahuDiagnosticsCorePlugin plugin;
 	private static DiagnosticsConnector connector;
@@ -17,6 +17,7 @@ public class WaigatahuDiagnosticsCorePlugin extends Plugin {
 
 	public void stop(BundleContext context) throws Exception {
 		plugin = null;
+		connector.shutdown();
 		super.stop(context);
 	}
 

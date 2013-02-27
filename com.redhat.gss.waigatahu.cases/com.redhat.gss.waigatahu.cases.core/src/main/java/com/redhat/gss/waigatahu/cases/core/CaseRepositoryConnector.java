@@ -1,16 +1,20 @@
 package com.redhat.gss.waigatahu.cases.core;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.mylyn.commons.net.AbstractWebLocation;
 import org.eclipse.mylyn.tasks.core.AbstractRepositoryConnector;
 import org.eclipse.mylyn.tasks.core.IRepositoryQuery;
 import org.eclipse.mylyn.tasks.core.ITask;
 import org.eclipse.mylyn.tasks.core.RepositoryStatus;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
+import org.eclipse.mylyn.tasks.core.TaskRepositoryLocationFactory;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskAttachmentHandler;
 import org.eclipse.mylyn.tasks.core.data.AbstractTaskDataHandler;
 import org.eclipse.mylyn.tasks.core.data.TaskData;
@@ -20,6 +24,7 @@ import org.eclipse.mylyn.tasks.core.sync.ISynchronizationSession;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClient;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactory;
 import com.redhat.gss.waigatahu.cases.core.client.RhcpClientFactoryImpl;
+import com.redhat.gss.waigatahu.common.client.CustomerPortalClient;
 import com.redhat.gss.waigatahu.common.client.LoginException;
 
 public class CaseRepositoryConnector extends AbstractRepositoryConnector implements RhcpClientFactory {
@@ -28,7 +33,7 @@ public class CaseRepositoryConnector extends AbstractRepositoryConnector impleme
 	private final CaseDataHandler taskDataHandler = new CaseDataHandler(this);
 	private final AbstractTaskAttachmentHandler taskAttachmentHandler = new CaseAttachmentHandler(this);
 
-	private final RhcpClientFactory factory = new RhcpClientFactoryImpl();
+	private final RhcpClientFactory factory = new RhcpClientFactoryImpl(new CustomerPortalClient());
 	private final Map<TaskRepository, RhcpClient> clients = new HashMap<TaskRepository, RhcpClient>();
 
 	public String getConnectorKind() {
@@ -42,6 +47,13 @@ public class CaseRepositoryConnector extends AbstractRepositoryConnector impleme
 			}
 			clients.clear();
 		}
+	}
+	
+	/* FIXME: Complete hack to allow other plugisn access to the authentication */
+	public synchronized AbstractWebLocation getWebLocation() {
+		Iterator<Entry<TaskRepository, RhcpClient>> it = clients.entrySet().iterator();
+		TaskRepository repository = it.next().getKey();
+		return new TaskRepositoryLocationFactory().createWebLocation(repository);
 	}
 
 	public boolean canCreateTaskFromKey(TaskRepository repository) {
@@ -113,6 +125,7 @@ public class CaseRepositoryConnector extends AbstractRepositoryConnector impleme
 	}
 
 
+
 	public RhcpClient getClient(TaskRepository repository) {
 		synchronized (this) {
 			RhcpClient ref = clients.get(repository);
@@ -156,10 +169,8 @@ public class CaseRepositoryConnector extends AbstractRepositoryConnector impleme
 	public void updateRepositoryConfiguration(TaskRepository taskRepository,
 			IProgressMonitor monitor) throws CoreException {
 		RhcpClient client = getClient(taskRepository);
-		client.updateData();
+		client.updateData(monitor);
 	}
-
-	
 
 	public AbstractTaskDataHandler getTaskDataHandler() {
 		return taskDataHandler;

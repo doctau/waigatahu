@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.dialogs.IMessageProvider;
 import org.eclipse.mylyn.internal.tasks.ui.editors.EditorUtil;
 import org.eclipse.mylyn.tasks.core.TaskRepository;
@@ -94,7 +96,8 @@ public class CaseEditorPage extends AbstractTaskEditorPage {
 			TaskAttribute versionAttr = rootAttr.getAttribute(TaskAttribute.VERSION);
 			// update version field
 			versionAttr.clearOptions();
-			for (String v: client.getVersions(changedAttr.getValue())) {
+			IProgressMonitor monitor = new NullProgressMonitor();
+			for (String v: client.getVersions(changedAttr.getValue(), monitor)) {
 				versionAttr.putOption(v, v);
 			}
 			//update the UI field

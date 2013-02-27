@@ -1,18 +1,7 @@
 package com.redhat.gss.waigatahu.diagnostics.ui;
 
-import java.io.Serializable;
-
-import org.eclipse.swt.SWT;
-import org.eclipse.ui.forms.events.HyperlinkAdapter;
-import org.eclipse.ui.forms.events.HyperlinkEvent;
-import org.eclipse.ui.forms.widgets.Hyperlink;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
-
-import com.redhat.gss.strata.model.Link;
-import com.redhat.gss.strata.model.Problem;
-import com.redhat.gss.strata.model.Source;
-import com.redhat.gss.waigatahu.diagnostics.core.data.DiagnosticResults;
 
 /**
  * The activator class controls the plug-in life cycle
